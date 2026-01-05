@@ -1,0 +1,298 @@
+{
+  "issues": [
+    {
+      "id": "CHANGE-250627-001",
+      "type": "change",
+      "epic": "Notifications",
+      "title": "Implement Vuex store for notification state management",
+      "description": "Current notification handling uses direct IPC communication and event-based updates. While it supports simple notification functionality, it would benefit from a centralized Vuex store for more complex notification state management, consistency, and easier state access across components.",
+      "acceptance_criteria": [
+        "Create a Vuex store module for notifications (store/modules/notifications.js)",
+        "Move notification state management from event-based to store-based approach",
+        "Ensure all notification components use the store instead of direct IPC events",
+        "Maintain existing notification functionality during transition",
+        "Add tests for notification store mutations and actions"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-250627-002",
+      "type": "task",
+      "epic": "IPC Architecture",
+      "title": "Consolidate and clarify IPC communication patterns",
+      "description": "The preload script exposes two communication objects: 'api' (generic send/receive with whitelisted channels) and 'electron' (large number of direct invokers and specific event listeners). The 'electron' object is the predominant pattern, while 'api' appears underutilized or from an older pattern. This creates confusion about which pattern to use.",
+      "acceptance_criteria": [
+        "Audit all IPC communication patterns in the codebase",
+        "Decide on a single, consistent IPC pattern for the application",
+        "Document the chosen pattern in AGENTS.md or developer documentation",
+        "Refactor code to use the consistent pattern throughout",
+        "Remove or update the unused pattern documentation"
+      ],
+      "passes": false
+    },
+    {
+      "id": "STORY-250627-003",
+      "type": "story",
+      "epic": "Notifications",
+      "title": "Detect system notification permissions status",
+      "description": "Users need to enable system notifications manually in OS settings (e.g., macOS System Settings). The app should detect if notifications are enabled and provide in-app guidance to users when notifications are disabled.",
+      "acceptance_criteria": [
+        "Implement API to check system notification permission status",
+        "Display user-friendly message in settings when notifications are disabled",
+        "Provide direct link/button to open system notification settings",
+        "Support macOS, Windows, and Linux platforms",
+        "Add documentation for notification permission requirements"
+      ],
+      "passes": false
+    },
+    {
+      "id": "STORY-250627-004",
+      "type": "story",
+      "epic": "Task Management",
+      "title": "Implement task dependency selection UI",
+      "description": "When creating or editing a task, users should be able to select dependencies from a dropdown with checkboxes. Selected dependencies become prerequisites that must be completed before the task can be started.",
+      "acceptance_criteria": [
+        "Add dependency selector component to task creation/edit form",
+        "Display available tasks as checkboxes in searchable dropdown",
+        "Show dependency relationships visually (e.g., task ordering indicators)",
+        "Prevent circular dependencies in validation logic",
+        "Auto-order tasks based on dependency completion status",
+        "Update task list to show dependency relationships"
+      ],
+      "passes": false
+    },
+    {
+      "id": "STORY-250627-005",
+      "type": "story",
+      "epic": "Task Management",
+      "title": "Design and implement task recurrence functionality",
+      "description": "Tasks need to support recurring patterns (daily, weekly, monthly, etc.). While the database has a recurrence_rules table, the recurrence logic and UI are not yet implemented.",
+      "acceptance_criteria": [
+        "Design recurrence rule data structure and UI pattern",
+        "Create recurrence configuration component in task form",
+        "Implement recurrence engine for generating recurring task instances",
+        "Handle edge cases (skipped periods, end dates, max occurrences)",
+        "Integrate recurrence with AI natural language parsing",
+        "Add tests for recurrence generation logic"
+      ],
+      "passes": false
+    },
+    {
+      "id": "BUG-250627-006",
+      "type": "bug",
+      "epic": "Notifications",
+      "title": "Review and fix ipcMain.emit usage in notification service",
+      "description": "The sendNotification function in app/src/services/notification.js uses ipcMain.emit for inter-process communication. It's recommended to use webContents.send for sending messages to the renderer process, as ipcMain.emit may not properly reach the renderer.",
+      "acceptance_criteria": [
+        "Review all ipcMain.emit calls in notification.js",
+        "Replace with webContents.send where appropriate",
+        "Test notifications still work correctly after changes",
+        "Document the correct IPC pattern for future developers"
+      ],
+      "passes": false
+    },
+    {
+      "id": "BUG-250627-007",
+      "type": "bug",
+      "epic": "Notifications",
+      "title": "Handle notification scheduling edge cases",
+      "description": "The notification scheduling mechanism needs to handle edge cases gracefully: system clock changes (backward/forward), app restarts/crashes, and system sleep/wake cycles.",
+      "acceptance_criteria": [
+        "Implement clock change detection and notification rescheduling",
+        "Persist scheduled notifications and restore on app startup",
+        "Handle system sleep/wake events for pending notifications",
+        "Add tests for edge case scenarios",
+        "Log notification scheduling events for debugging"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-250627-008",
+      "type": "task",
+      "epic": "Projects",
+      "title": "Improve error handling in project service",
+      "description": "The project service (app/src/services/project.js) needs more specific error handling for database operations to provide better debugging information and user feedback.",
+      "acceptance_criteria": [
+        "Add try-catch blocks for all database operations",
+        "Provide specific error messages for different failure types",
+        "Log errors with sufficient context for debugging",
+        "Return user-friendly error messages to the UI",
+        "Add error handling tests"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-250627-009",
+      "type": "task",
+      "epic": "Tasks",
+      "title": "Improve data validation in task service",
+      "description": "The task service (app/src/services/task.js) needs improved data validation, especially for date and time formats, to prevent invalid data from being stored in the database.",
+      "acceptance_criteria": [
+        "Add validation for all task properties (dates, times, priorities)",
+        "Use a consistent date/time format throughout the application",
+        "Validate date ranges (due_date must be after created_at)",
+        "Add validation tests for task creation and updates",
+        "Document validation rules in developer documentation"
+      ],
+      "passes": false
+    },
+    {
+      "id": "BUG-250627-010",
+      "type": "bug",
+      "epic": "Tasks",
+      "title": "Prevent circular dependencies in task and notification services",
+      "description": "There's a potential for circular dependencies between task.js and notification.js when deleting tasks and associated notifications. This needs to be resolved to prevent runtime errors.",
+      "acceptance_criteria": [
+        "Analyze and document the dependency chain between services",
+        "Refactor to eliminate circular dependencies",
+        "Ensure task deletion properly cleans up notifications without circular calls",
+        "Add tests to prevent regression of circular dependencies",
+        "Document the proper pattern for cross-service operations"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-250627-011",
+      "type": "task",
+      "epic": "Architecture",
+      "title": "Separate main process and renderer process concerns",
+      "description": "The main process (app/electron.js) and IPC handlers import modules under app/src/services/*, blurring the boundary between main and renderer concerns. This complicates bundling/testing, especially where renderer-only utilities (e.g., window.logger) are referenced.",
+      "acceptance_criteria": [
+        "Audit all imports from app/src/services/* in main process files",
+        "Move shared business logic to a location accessible by both processes",
+        "Create main-specific service layer for IPC handlers",
+        "Ensure renderer-only utilities are not referenced in main process",
+        "Add tests for main process service layer",
+        "Update AGENTS.md with clear separation guidance"
+      ],
+      "passes": false
+    },
+    {
+      "id": "BUG-250627-012",
+      "type": "bug",
+      "epic": "Logging",
+      "title": "Fix mixed module system and logger selection in services",
+      "description": "Several services attempt to use require(...) inside ESM modules (e.g., app/src/services/task.js, app/src/services/project.js, app/src/services/dataIntegrity.js). In Node ESM, require is not defined; the catch path falls back to console.*, undermining the project's own logging standard.",
+      "acceptance_criteria": [
+        "Audit all services for require() usage in ESM modules",
+        "Replace dynamic require() with proper ESM imports",
+        "Ensure all services use the project's logger consistently",
+        "Remove console.* fallbacks after proper import is established",
+        "Add linting rules to prevent require() in ESM files",
+        "Test logging in all affected services"
+      ],
+      "passes": false
+    },
+    {
+      "id": "BUG-250627-013",
+      "type": "bug",
+      "epic": "Routing",
+      "title": "Fix UI routing mismatch in NotificationListener component",
+      "description": "app/src/components/system/NotificationListener.vue attempts to route to { name: 'project' }, but the router only defines Home and Settings (app/src/router/index.js). This is either stale code or an incomplete feature.",
+      "acceptance_criteria": [
+        "Determine if project route is needed or if code is stale",
+        "If needed: add project route to router configuration",
+        "If not needed: remove or update the routing logic in NotificationListener",
+        "Verify all router references throughout the codebase",
+        "Add tests for notification-triggered navigation"
+      ],
+      "passes": false
+    },
+    {
+      "id": "BUG-250627-014",
+      "type": "bug",
+      "epic": "State Management",
+      "title": "Fix Vuex action API misuse in tasks module",
+      "description": "fetchTasksByProject in app/src/store/modules/tasks.js has a non-standard signature (context, projectId, { fetchAll } = {}). Vuex only passes a single payload argument, so the third parameter is never provided; fetchAllTasksByProject attempts to pass a third argument via dispatch, which Vuex interprets as dispatch options (not payload). This makes 'fetch all vs. recent' per-project behavior unreliable.",
+      "acceptance_criteria": [
+        "Refactor fetchTasksByProject to use standard Vuex action signature",
+        "Pass fetchAll as part of the payload object instead of separate argument",
+        "Update all dispatch calls to fetchTasksByProject accordingly",
+        "Add tests verifying fetchAll behavior works correctly",
+        "Audit other Vuex actions for similar API misuse",
+        "Document correct Vuex action patterns in AGENTS.md"
+      ],
+      "passes": true
+    },
+    {
+      "id": "TASK-250627-015",
+      "type": "task",
+      "epic": "Architecture",
+      "title": "Refactor monolithic functionHandlers.js module",
+      "description": "app/electron-main/functionHandlers.js is a monolith with multiple responsibilities (validation/parsing/filtering/formatting/tool dispatch). This will become harder to safely extend as more AI functions are added.",
+      "acceptance_criteria": [
+        "Analyze current responsibilities in functionHandlers.js",
+        "Separate validation logic into dedicated module",
+        "Separate parsing logic into dedicated module",
+        "Separate filtering/formatting logic into utilities",
+        "Keep only tool dispatch orchestration in functionHandlers",
+        "Add tests for each extracted module",
+        "Update AGENTS.md with new structure"
+      ],
+      "passes": false
+    },
+    {
+      "id": "BUG-250627-016",
+      "type": "bug",
+      "epic": "Logging",
+      "title": "Reduce verbose logging in hot paths",
+      "description": "Task/AI query handlers log extensive per-entity information (e.g., due dates for every task). This hurts performance and increases privacy risk (logs contain personal task content).",
+      "acceptance_criteria": [
+        "Audit all logging in task and AI query handlers",
+        "Reduce verbosity of per-entity logging in hot paths",
+        "Implement log levels (debug, info, warn, error)",
+        "Strip or redact sensitive personal content from logs",
+        "Add toggle for debug logging in development",
+        "Document logging guidelines in AGENTS.md"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-250627-017",
+      "type": "task",
+      "epic": "Documentation",
+      "title": "Update out-of-date documentation",
+      "description": "doc/Folder_Structure.md lists files that no longer exist (e.g., TaskList.vue), reducing trust in documentation.",
+      "acceptance_criteria": [
+        "Audit all documentation files for outdated references",
+        "Update or remove references to non-existent files",
+        "Add script to validate documentation accuracy",
+        "Establish documentation maintenance process",
+        "Run documentation validation in CI"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-250627-018",
+      "type": "task",
+      "epic": "Code Quality",
+      "title": "Extend lint coverage to test files",
+      "description": "app/eslint.config.js ignores **/*.test.js, so tests may drift from standards and accumulate issues unnoticed.",
+      "acceptance_criteria": [
+        "Remove or adjust **/*.test.js exclusion from eslint.config.js",
+        "Run ESLint on test files and fix existing issues",
+        "Add test-specific lint rules if needed (e.g., for test globals)",
+        "Ensure npm run lint checks all JavaScript files",
+        "Add lint test to CI pipeline"
+      ],
+      "passes": false
+    },
+    {
+      "id": "STORY-250627-019",
+      "type": "story",
+      "epic": "Testing",
+      "title": "Implement end-to-end tests for IPC communication boundaries",
+      "description": "No end-to-end tests across preload <-> IPC <-> main <-> renderer boundaries. This critical communication path lacks integration testing, increasing risk of regressions in inter-process communication.",
+      "acceptance_criteria": [
+        "Research E2E testing approach for Electron (e.g., Spectron, Playwright)",
+        "Create test infrastructure for spawning Electron app in test environment",
+        "Write tests for preload script API exposure",
+        "Write tests for IPC request/response flow (renderer -> main -> renderer)",
+        "Write tests for IPC event flow (main -> renderer)",
+        "Test error handling across process boundaries",
+        "Add E2E tests to CI pipeline"
+      ],
+      "passes": false
+    }
+  ]
+}
