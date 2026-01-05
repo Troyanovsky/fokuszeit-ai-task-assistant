@@ -245,7 +245,7 @@
         "Add toggle for debug logging in development",
         "Document logging guidelines in AGENTS.md"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "TASK-250627-017",

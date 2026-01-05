@@ -1,8 +1,15 @@
+/**
+ * AI service for handling LLM interactions and tool execution.
+ */
+
+import { randomUUID } from 'crypto';
 import axios from 'axios';
 import Store from 'electron-store';
 import projectManager from '../src/services/project.js';
 import logger from './logger.js';
 import { handleFunctionCall } from './functionHandlers.js';
+import { isDebugLoggingEnabled, shouldLogRaw } from '../src/utils/loggingConfig.js';
+import { redactAiRequestPayload, redactAiResponsePayload, redactFunctionCall } from '../src/utils/loggingSanitizers.js';
 
 // Initialize persistent store
 const store = new Store({
@@ -28,9 +35,35 @@ const aiState = {
 // Set initial configuration state
 aiState.isConfigured = Boolean(aiState.apiKey);
 
+function createRequestId() {
+  try {
+    return randomUUID();
+  } catch {
+    return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+}
 
+function logAiRequestSummary(requestId, requestPayload) {
+  logger.info('AI API Request', {
+    requestId,
+    model: requestPayload?.model,
+    messageCount: requestPayload?.messages?.length ?? 0,
+    toolCount: requestPayload?.tools?.length ?? 0
+  });
+}
 
+function logAiResponseSummary(requestId, responseData) {
+  const choiceCount = responseData?.choices?.length ?? 0;
+  const toolCallCount = responseData?.choices?.reduce((count, choice) => {
+    return count + (choice?.message?.tool_calls?.length ?? 0);
+  }, 0);
 
+  logger.info('AI API Response', {
+    requestId,
+    choiceCount,
+    toolCallCount
+  });
+}
 
 
 
@@ -52,11 +85,11 @@ function updateChatHistory(message, mainWindow) {
  * @param {BrowserWindow} mainWindow - Main window instance for sending updates
  * @returns {Array} - Array of function results
  */
-async function processFunctionCalls(functionCalls, mainWindow) {
+async function processFunctionCalls(functionCalls, mainWindow, requestId) {
   const functionResults = [];
   
   for (const functionCall of functionCalls) {
-    const result = await executeFunctionCall(functionCall);
+    const result = await executeFunctionCall(functionCall, requestId);
     
     functionResults.push({
       functionName: functionCall.name,
@@ -212,7 +245,11 @@ async function sendMessage(message, mainWindow) {
     // Handle function calls if present
     if (response.functionCalls && response.functionCalls.length > 0) {
       // Process the function calls and collect results
-      const functionResults = await processFunctionCalls(response.functionCalls, mainWindow);
+      const functionResults = await processFunctionCalls(
+        response.functionCalls,
+        mainWindow,
+        response.requestId
+      );
       
       // Send all function results back to the LLM for a follow-up response
       const followUpResponse = await processWithLLM(null, functionResults);
@@ -229,7 +266,11 @@ async function sendMessage(message, mainWindow) {
       // Handle nested function calls if present in follow-up response
       if (followUpResponse.functionCalls && followUpResponse.functionCalls.length > 0) {
         // Process the nested function calls and collect results
-        const nestedFunctionResults = await processFunctionCalls(followUpResponse.functionCalls, mainWindow);
+        const nestedFunctionResults = await processFunctionCalls(
+          followUpResponse.functionCalls,
+          mainWindow,
+          followUpResponse.requestId
+        );
         
         // Send all nested function results back to the LLM for a final response
         const finalResponse = await processWithLLM(null, nestedFunctionResults);
@@ -418,7 +459,7 @@ function createAssistantMessage(msg) {
  * @param {Array} functionSchemas - The function schemas to use for the LLM API
  * @returns {Object} - The response from the LLM API
  */
-async function callLLMAPI(messages, functionSchemas) {
+async function callLLMAPI(messages, functionSchemas, requestId) {
   const requestPayload = {
     model: aiState.model,
     messages,
@@ -426,11 +467,14 @@ async function callLLMAPI(messages, functionSchemas) {
     tool_choice: 'auto'
   };
 
-  const loggablePayload = {
-    model: requestPayload.model,
-    messages: requestPayload.messages
-  };
-  logger.info('🔄 Electron Main Process - AI API Request:', JSON.stringify(loggablePayload, null, 2));
+  const debugEnabled = isDebugLoggingEnabled();
+  const rawEnabled = shouldLogRaw(requestId);
+
+  logAiRequestSummary(requestId, requestPayload);
+  if (debugEnabled) {
+    const payload = rawEnabled ? requestPayload : redactAiRequestPayload(requestPayload);
+    logger.debug('AI API Request Payload', { requestId, payload });
+  }
 
   const response = await axios.post(
     aiState.apiUrl,
@@ -443,7 +487,11 @@ async function callLLMAPI(messages, functionSchemas) {
     }
   );
 
-  logger.info('✅ Electron Main Process - AI API Response:', JSON.stringify(response.data, null, 2));
+  logAiResponseSummary(requestId, response.data);
+  if (debugEnabled) {
+    const payload = rawEnabled ? response.data : redactAiResponsePayload(response.data);
+    logger.debug('AI API Response Payload', { requestId, payload });
+  }
   return response.data.choices[0].message;
 }
 
@@ -503,8 +551,12 @@ async function processWithLLM(userInput, functionResults = null) {
       formattedSystemMessage
     );
     
-    const aiResponse = await callLLMAPI(messages, functionSchemas);
-    return processAIResponse(aiResponse);
+    const requestId = createRequestId();
+    const aiResponse = await callLLMAPI(messages, functionSchemas, requestId);
+    return {
+      requestId,
+      ...processAIResponse(aiResponse)
+    };
   } catch (error) {
     logger.logError(error, 'Error calling LLM API');
     throw new Error(`Failed to process input: ${error.message}`);
@@ -516,9 +568,16 @@ async function processWithLLM(userInput, functionResults = null) {
  * @param {Object} functionCall - Function call object from AI
  * @returns {Promise<Object>} - Result of the function execution
  */
-async function executeFunctionCall(functionCall) {
-  logger.info('🔄 Electron Main Process - Executing function call:', functionCall);
+async function executeFunctionCall(functionCall, requestId = null) {
   const { id, name, arguments: args } = functionCall;
+  const debugEnabled = isDebugLoggingEnabled();
+  const rawEnabled = shouldLogRaw(requestId);
+
+  logger.info('Executing function call', { requestId, toolCallId: id, name });
+  if (debugEnabled) {
+    const payload = rawEnabled ? functionCall : redactFunctionCall(functionCall);
+    logger.debug('Function call payload', { requestId, toolCallId: id, payload });
+  }
 
   try {
     // Common result properties to include the original function call ID

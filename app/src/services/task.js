@@ -7,6 +7,8 @@ import databaseService from './database.js';
 import { Task, STATUS, PRIORITY } from '../models/Task.js';
 import notificationService from './notification.js';
 import recurrenceService from './recurrence.js';
+import { isDebugLoggingEnabled } from '../utils/loggingConfig.js';
+import { redactTask } from '../utils/loggingSanitizers.js';
 
 // Determine which logger to use based on the environment
 let logger;
@@ -19,7 +21,7 @@ try {
     // We're in the renderer process
     logger = require('./logger.js').default;
   }
-} catch (error) {
+} catch {
   // Fallback console logger
   logger = {
     error: console.error,
@@ -152,22 +154,28 @@ class TaskManager {
    * @param {Object} taskData - Task data
    * @returns {Object|boolean} - Task object with ID if successful, false otherwise
    */
+  // eslint-disable-next-line complexity
   async addTask(taskData) {
     try {
-      logger.info('Adding task with original data:', taskData);
+      const debugEnabled = isDebugLoggingEnabled();
+      logger.info('Adding task', {
+        projectId: taskData?.projectId ?? taskData?.project_id
+      });
+      if (debugEnabled) {
+        logger.debug('Add task payload', { task: redactTask(taskData) });
+      }
 
       // Make sure project_id is correctly set
       if (!taskData.project_id && taskData.projectId) {
         taskData.project_id = taskData.projectId;
       }
 
-      logger.info('Task data after project_id check:', taskData);
-
       // Create a Task instance from the data
       const task = new Task(taskData);
 
-      logger.info('Task instance created:', task);
-      logger.info('Task project ID:', task.projectId);
+      if (debugEnabled) {
+        logger.debug('Task instance created', { task: redactTask(task) });
+      }
 
       // Validate the task
       const isValid = task.validate();
@@ -182,8 +190,9 @@ class TaskManager {
       }
 
       const data = task.toDatabase();
-      logger.info('Adding task with database data:', data);
-      logger.info('Database project_id:', data.project_id);
+      if (debugEnabled) {
+        logger.debug('Add task database payload', { task: redactTask(data) });
+      }
 
       const result = databaseService.insert(
         `INSERT INTO tasks (
@@ -207,7 +216,9 @@ class TaskManager {
         ]
       );
 
-      logger.info('Task insert result:', result);
+      if (debugEnabled) {
+        logger.debug('Task insert result', { result });
+      }
       if (result && result.changes > 0) {
         // Handle planned time notification for new task if plannedTime is provided
         if (data.planned_time) {
@@ -218,7 +229,7 @@ class TaskManager {
               null, // no old planned time for new task
               data.planned_time
             );
-            logger.info(`Planned time notification handled for new task ${data.id}`);
+            logger.debug(`Planned time notification handled for new task ${data.id}`);
           } catch (notificationError) {
             logger.error(
               `Error handling planned time notification for new task ${data.id}:`,
@@ -243,9 +254,14 @@ class TaskManager {
    * @param {Object} taskData - Task data
    * @returns {boolean} - Success status
    */
+  // eslint-disable-next-line complexity
   async updateTask(taskData) {
     try {
-      logger.info('Updating task with original data:', taskData);
+      const debugEnabled = isDebugLoggingEnabled();
+      logger.info('Updating task', { taskId: taskData?.id });
+      if (debugEnabled) {
+        logger.debug('Update task payload', { task: redactTask(taskData) });
+      }
 
       // Get existing task to preserve any fields not included in the update
       const existingTask = await this.getTaskById(taskData.id);
@@ -284,9 +300,9 @@ class TaskManager {
       }
 
       const data = taskDbData;
-      logger.info('Updating task with database data:', data);
-      logger.info('Database due_date:', data.due_date);
-      logger.info('Database planned_time:', data.planned_time);
+      if (debugEnabled) {
+        logger.debug('Update task database payload', { task: redactTask(data) });
+      }
 
       const result = databaseService.update(
         `UPDATE tasks SET
@@ -336,11 +352,12 @@ class TaskManager {
    * @param {string|Date|null} newPlannedTime - New planned time
    * @private
    */
+  // eslint-disable-next-line complexity
   async _handlePlannedTimeNotificationUpdate(taskId, taskName, oldPlannedTime, newPlannedTime) {
     try {
-      logger.info(`Handling planned time notification update for task ${taskId}`);
-      logger.info(`Old planned time: ${oldPlannedTime}`);
-      logger.info(`New planned time: ${newPlannedTime}`);
+      logger.debug(`Handling planned time notification update for task ${taskId}`);
+      logger.debug(`Old planned time: ${oldPlannedTime}`);
+      logger.debug(`New planned time: ${newPlannedTime}`);
 
       // Get existing planned time notifications for this task
       const existingNotifications = await notificationService.getNotificationsByTask(taskId);
@@ -357,7 +374,7 @@ class TaskManager {
       if (oldPlannedTime && !newPlannedTime) {
         for (const notification of plannedTimeNotifications) {
           await notificationService.deleteNotification(notification.id);
-          logger.info(`Deleted planned time notification ${notification.id} for task ${taskId}`);
+          logger.debug(`Deleted planned time notification ${notification.id} for task ${taskId}`);
         }
         return;
       }
@@ -373,7 +390,7 @@ class TaskManager {
         };
 
         await notificationService.addNotification(notificationData);
-        logger.info(
+        logger.debug(
           `Created new planned time notification for task ${taskId} at ${newPlannedTime}`
         );
         return;
@@ -404,14 +421,14 @@ class TaskManager {
           };
 
           await notificationService.updateNotification(updateData);
-          logger.info(
+          logger.debug(
             `Updated planned time notification ${notificationToUpdate.id} for task ${taskId} to ${newPlannedTime}`
           );
 
           // Delete any extra notifications (there should only be one planned time notification per task)
           for (let i = 1; i < plannedTimeNotifications.length; i++) {
             await notificationService.deleteNotification(plannedTimeNotifications[i].id);
-            logger.info(
+            logger.debug(
               `Deleted duplicate planned time notification ${plannedTimeNotifications[i].id} for task ${taskId}`
             );
           }
@@ -426,7 +443,7 @@ class TaskManager {
           };
 
           await notificationService.addNotification(notificationData);
-          logger.info(
+          logger.debug(
             `Created new planned time notification for task ${taskId} at ${newPlannedTime}`
           );
         }
@@ -441,6 +458,7 @@ class TaskManager {
    * @param {string} id - Task ID
    * @returns {boolean} - Success status
    */
+  // eslint-disable-next-line complexity
   async deleteTask(id) {
     try {
       // First check if the task exists
@@ -456,7 +474,7 @@ class TaskManager {
         for (const notification of notifications) {
           await notificationService.deleteNotification(notification.id);
         }
-        logger.info(`Deleted ${notifications.length} notifications for task ${id}`);
+        logger.debug(`Deleted ${notifications.length} notifications for task ${id}`);
       } catch (notificationError) {
         logger.error(`Error deleting notifications for task ${id}:`, notificationError);
         // Continue with task deletion even if notification deletion fails
@@ -474,12 +492,12 @@ class TaskManager {
             rule.id,
           ]);
           if (deleteResult && deleteResult.changes > 0) {
-            logger.info(`Deleted recurrence rule ${rule.id} for task ${id}`);
+            logger.debug(`Deleted recurrence rule ${rule.id} for task ${id}`);
           }
         }
 
         if (recurrenceRules.length > 0) {
-          logger.info(`Deleted ${recurrenceRules.length} recurrence rules for task ${id}`);
+          logger.debug(`Deleted ${recurrenceRules.length} recurrence rules for task ${id}`);
         }
       } catch (recurrenceError) {
         logger.error(`Error deleting recurrence rules for task ${id}:`, recurrenceError);
@@ -542,11 +560,11 @@ class TaskManager {
       // Handle recurrence if task was just completed
       if (oldStatus !== STATUS.DONE && status === STATUS.DONE) {
         try {
-          logger.info(`Task ${id} completed, checking for recurrence`);
+          logger.debug(`Task ${id} completed, checking for recurrence`);
           const newTaskData = await recurrenceService.processTaskCompletion(id);
 
           if (newTaskData) {
-            logger.info(`Created recurring task ${newTaskData.id} from completed task ${id}`);
+            logger.debug(`Created recurring task ${newTaskData.id} from completed task ${id}`);
             // Return both success status and new task data
             return {
               success: true,
@@ -580,7 +598,7 @@ class TaskManager {
 
       // Case 1: Task was marked as DONE - cancel all scheduled notifications
       if (oldStatus !== STATUS.DONE && newStatus === STATUS.DONE) {
-        logger.info(`Task ${taskId} marked as DONE, cancelling ${notifications.length} notifications`);
+        logger.debug(`Task ${taskId} marked as DONE, cancelling ${notifications.length} notifications`);
         for (const notification of notifications) {
           notificationService.cancelNotification(notification.id);
         }
@@ -588,7 +606,9 @@ class TaskManager {
 
       // Case 2: Task was changed from DONE to another status - re-schedule notifications
       else if (oldStatus === STATUS.DONE && newStatus !== STATUS.DONE) {
-        logger.info(`Task ${taskId} changed from DONE to ${newStatus}, re-scheduling ${notifications.length} notifications`);
+        logger.debug(
+          `Task ${taskId} changed from DONE to ${newStatus}, re-scheduling ${notifications.length} notifications`
+        );
         for (const notification of notifications) {
           // Only re-schedule notifications that are in the future
           const notificationTime = new Date(notification.time);
@@ -596,9 +616,11 @@ class TaskManager {
 
           if (notificationTime > now) {
             notificationService.scheduleNotification(notification);
-            logger.info(`Re-scheduled notification ${notification.id} for ${notificationTime.toLocaleString()}`);
+            logger.debug(
+              `Re-scheduled notification ${notification.id} for ${notificationTime.toLocaleString()}`
+            );
           } else {
-            logger.info(`Notification ${notification.id} time has passed, not re-scheduling`);
+            logger.debug(`Notification ${notification.id} time has passed, not re-scheduling`);
           }
         }
       }
@@ -756,9 +778,9 @@ class TaskManager {
       const todayStr = today.toISOString().split('T')[0];
 
       // Get all tasks that are not done
-      logger.info('Getting tasks for prioritization with statuses:', STATUS.PLANNING, STATUS.DOING);
+      logger.debug('Getting tasks for prioritization with statuses:', STATUS.PLANNING, STATUS.DOING);
       const tasks = await this.getTasksByStatus(STATUS.PLANNING, STATUS.DOING);
-      logger.info(`Retrieved ${tasks.length} tasks for prioritization`);
+      logger.debug(`Retrieved ${tasks.length} tasks for prioritization`);
 
       // Sort tasks by:
       // 1. Overdue tasks first (highest priority)
@@ -768,6 +790,7 @@ class TaskManager {
       // 5. Tasks with medium priority
       // 6. All other tasks
 
+      // eslint-disable-next-line complexity
       return tasks.sort((a, b) => {
         // Convert dueDate to string for comparison if it's a Date object
         const aDueDate =
@@ -817,7 +840,7 @@ class TaskManager {
       const workingHours = preferences.workingHours || preferences;
       const bufferTime = preferences.bufferTime || 0;
 
-      logger.info('Planning day with preferences:', { workingHours, bufferTime });
+      logger.debug('Planning day with preferences:', { workingHours, bufferTime });
 
       // Get tasks that need scheduling
       const { tasksToSchedule, today, planningStart, workEnd } =
@@ -908,7 +931,7 @@ class TaskManager {
       );
     });
 
-    logger.info(`Found ${unplannedTasks.length} unplanned tasks for today`);
+    logger.debug(`Found ${unplannedTasks.length} unplanned tasks for today`);
 
     // Parse working hours
     const [startHour, startMinute] = workingHours.startTime.split(':').map(Number);
@@ -924,8 +947,8 @@ class TaskManager {
     // If current time is after work start, use current time as start
     const planningStart = today > workStart ? new Date(today) : new Date(workStart);
 
-    logger.info(`Planning start time: ${planningStart.toLocaleTimeString()}`);
-    logger.info(`Work end time: ${workEnd.toLocaleTimeString()}`);
+    logger.debug(`Planning start time: ${planningStart.toLocaleTimeString()}`);
+    logger.debug(`Work end time: ${workEnd.toLocaleTimeString()}`);
 
     // Sort unplanned tasks by priority first, then by duration (shorter first)
     const tasksToSchedule = [...unplannedTasks].sort((a, b) => {
@@ -974,7 +997,7 @@ class TaskManager {
       return !needsRescheduling;
     });
 
-    logger.info(
+    logger.debug(
       `Found ${plannedTasks.length} already planned tasks for today (excluding tasks needing rescheduling)`
     );
 
@@ -1122,6 +1145,7 @@ class TaskManager {
    * @param {number} bufferTime - Buffer time in minutes
    * @returns {Object|null} - Available slot or null if not found
    */
+  // eslint-disable-next-line complexity
   _findAnyAvailableSlot(task, planningStart, workEnd, busySlots, bufferTime) {
     const durationMinutes = task.duration !== null ? task.duration : 30;
     const totalTimeNeeded = durationMinutes; // Removed buffer time from total calculation
@@ -1239,7 +1263,7 @@ class TaskManager {
    * @param {number} bufferTime - Buffer time in minutes
    * @returns {Object} - Scheduled task
    */
-  _scheduleTaskInSlot(task, slot, busySlots, bufferTime) {
+  _scheduleTaskInSlot(task, slot, busySlots, _eBufferTime) {
     // Create a copy of the task with planned time
     const scheduledTask = new Task(task);
     scheduledTask.plannedTime = new Date(slot.start);
@@ -1282,9 +1306,9 @@ class TaskManager {
    */
   async rescheduleOverdueTasksToToday() {
     try {
-      logger.info('Attempting to reschedule all overdue tasks to today.');
+      logger.debug('Attempting to reschedule all overdue tasks to today.');
       const overdueTasks = await this.getOverdueTasks();
-      logger.info(`Found ${overdueTasks.length} overdue tasks to reschedule.`);
+      logger.debug(`Found ${overdueTasks.length} overdue tasks to reschedule.`);
 
       if (overdueTasks.length === 0) {
         return 0;
@@ -1305,7 +1329,7 @@ class TaskManager {
           const success = await this.updateTask(updatedTaskData);
           if (success) {
             rescheduledCount++;
-            logger.info(`Rescheduled task ${task.id} to today: ${todayStr}`);
+            logger.debug(`Rescheduled task ${task.id} to today: ${todayStr}`);
           } else {
             logger.warn(`Failed to reschedule task ${task.id}.`);
           }

@@ -1,5 +1,11 @@
-import { Task, STATUS } from '../../models/Task';
+/**
+ * Vuex tasks module for task state management.
+ */
+
+import { Task } from '../../models/Task';
 import logger from '../../services/logger';
+import { isDebugLoggingEnabled } from '../../utils/loggingConfig.js';
+import { redactTask, summarizeTasks } from '../../utils/loggingSanitizers.js';
 
 // Initial state
 const state = {
@@ -56,7 +62,7 @@ const actions = {
     }
   },
 
-  async fetchAllTasks({ commit, dispatch }) {
+  async fetchAllTasks({ dispatch }) {
     return dispatch('fetchTasks', { fetchAll: true });
   },
 
@@ -65,13 +71,17 @@ const actions = {
     commit('setError', null);
 
     try {
+      const debugEnabled = isDebugLoggingEnabled();
       // In Electron, we would use IPC to communicate with the main process
       const tasksData = window.electron
         ? fetchAll
           ? await window.electron.getTasksByProject(projectId)
           : await window.electron.getRecentTasksByProject(projectId)
         : [];
-      logger.info(`Fetched ${tasksData.length} tasks for project ${projectId}:`, tasksData);
+      logger.info('Fetched tasks for project', { projectId, count: tasksData.length });
+      if (debugEnabled) {
+        logger.debug('Fetched task summary', { projectId, summary: summarizeTasks(tasksData) });
+      }
       const tasks = tasksData.map((data) => Task.fromDatabase(data));
 
       commit('setTasks', tasks);
@@ -85,7 +95,7 @@ const actions = {
     }
   },
 
-  async fetchAllTasksByProject({ commit, dispatch }, projectId) {
+  async fetchAllTasksByProject({ dispatch }, projectId) {
     return dispatch('fetchTasksByProject', { projectId, fetchAll: true });
   },
 
@@ -121,12 +131,17 @@ const actions = {
     commit('setFilteredTasks', filtered);
   },
 
+  // eslint-disable-next-line complexity
   async addTask({ commit, dispatch }, taskData) {
     commit('setLoading', true);
     commit('setError', null);
 
     try {
-      logger.info('Adding task with original data:', taskData);
+      const debugEnabled = isDebugLoggingEnabled();
+      logger.info('Adding task', { projectId: taskData?.projectId ?? taskData?.project_id });
+      if (debugEnabled) {
+        logger.debug('Add task payload', { task: redactTask(taskData) });
+      }
 
       // Create a Task instance
       const task = new Task(taskData);
@@ -160,16 +175,20 @@ const actions = {
               : taskData.plannedTime.toISOString();
         }
 
-        logger.info(`Planned time for task: ${dbData.planned_time} (UTC)`);
+        if (debugEnabled) {
+          logger.debug(`Planned time for task set (UTC)`);
+        }
       }
 
-      logger.info('Task data to be saved:', dbData);
+      if (debugEnabled) {
+        logger.debug('Task data to be saved', { task: redactTask(dbData) });
+      }
 
       // In Electron, we would use IPC to communicate with the main process
       const success = window.electron ? await window.electron.addTask(dbData) : false;
 
       if (success) {
-        logger.info('Task added successfully, refreshing tasks for project:', dbData.project_id);
+        logger.info('Task added successfully', { projectId: dbData.project_id });
         // Refresh the tasks list
         if (dbData.project_id) {
           dispatch('fetchTasksByProject', { projectId: dbData.project_id });
@@ -192,12 +211,17 @@ const actions = {
     }
   },
 
+  // eslint-disable-next-line complexity
   async updateTask({ commit, dispatch }, task) {
     commit('setLoading', true);
     commit('setError', null);
 
     try {
-      logger.info('Updating task:', task);
+      const debugEnabled = isDebugLoggingEnabled();
+      logger.info('Updating task', { taskId: task?.id });
+      if (debugEnabled) {
+        logger.debug('Update task payload', { task: redactTask(task) });
+      }
 
       // Ensure we're working with a Task instance
       const taskInstance = task instanceof Task ? task : new Task(task);
@@ -231,10 +255,14 @@ const actions = {
               : task.plannedTime.toISOString();
         }
 
-        logger.info(`Updated planned time for task: ${dbData.planned_time} (UTC)`);
+        if (debugEnabled) {
+          logger.debug('Updated planned time for task (UTC)');
+        }
       }
 
-      logger.info('Task data to be updated:', dbData);
+      if (debugEnabled) {
+        logger.debug('Task data to be updated', { task: redactTask(dbData) });
+      }
 
       // In Electron, we would use IPC to communicate with the main process
       const success = window.electron ? await window.electron.updateTask(dbData) : false;

@@ -87,6 +87,20 @@ npm run lint
 npm run format
 ```
 
+### Logging Guidelines
+- Default logs must be summary-level only (counts, IDs, and action results).
+- Use `debug` for any per-entity or payload-level logging.
+- Raw payload logging is only allowed in debug mode and must be request-scoped.
+- Environment toggles:
+  - `FOKUS_DEBUG_LOGGING=1` enables debug logging.
+  - `FOKUS_RAW_LOGGING=1` enables raw payload logging (debug-only).
+  - `FOKUS_RAW_LOG_REQUEST_ID=<id>` limits raw payload logging to a single request ID.
+  - Renderer-only debug flags can use `VITE_` prefixes (e.g., `VITE_FOKUS_DEBUG_LOGGING=1`).
+- To capture raw AI payloads:
+  1. Enable `FOKUS_DEBUG_LOGGING=1` and `FOKUS_RAW_LOGGING=1`.
+  2. Trigger the action once and read the `requestId` from the `AI API Request` info log.
+  3. Re-run with `FOKUS_RAW_LOG_REQUEST_ID=<requestId>` to scope raw logs to that request.
+
 ## Database Schema
 
 The application uses SQLite database with the following main tables:

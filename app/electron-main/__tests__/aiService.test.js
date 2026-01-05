@@ -323,6 +323,7 @@ describe('AIService - processWithLLM', () => {
       const result = await aiService.processWithLLM('Test input');
 
       expect(result.text).toBe('AI response');
+      expect(result.requestId).toBeDefined();
       expect(axios.post).toHaveBeenCalledTimes(1);
 
       // Check request format - don't check the exact model as it might change
@@ -363,6 +364,7 @@ describe('AIService - processWithLLM', () => {
       const result = await aiService.processWithLLM('Show me my tasks');
 
       expect(result.functionCalls).toBeDefined();
+      expect(result.requestId).toBeDefined();
       expect(result.functionCalls.length).toBe(1);
       expect(result.functionCalls[0].name).toBe('getTasks');
     });

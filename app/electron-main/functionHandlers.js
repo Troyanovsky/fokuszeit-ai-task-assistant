@@ -1,9 +1,15 @@
+/**
+ * AI function handlers for task, project, and notification operations.
+ */
+
 import Project from '../src/models/Project.js';
 import projectManager from '../src/services/project.js';
 import taskManager from '../src/services/task.js';
 import notificationService from '../src/services/notification.js';
 import { Notification, TYPE } from '../src/models/Notification.js';
 import logger from './logger.js';
+import { isDebugLoggingEnabled, shouldLogRaw } from '../src/utils/loggingConfig.js';
+import { summarizeTasks, summarizeNotifications } from '../src/utils/loggingSanitizers.js';
 
 /**
  * Utility function to resolve a project ID from a name or ID
@@ -311,15 +317,22 @@ async function handleGetTasks(args, baseResult) {
  * @param {Object} baseResult - Base result object
  * @returns {Promise<Object>} - Function result
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 async function handleQueryTasks(args, baseResult) {
+  const requestId = baseResult?.functionCallId;
+  const debugEnabled = isDebugLoggingEnabled();
+  const rawEnabled = shouldLogRaw(requestId);
+
   // Start with all tasks
   let allTasks = await taskManager.getRecentTasks();
-  logger.info(`QueryTasks - Found ${allTasks.length} total tasks`);
-  allTasks.forEach(task => {
-    if (task.dueDate) {
-      logger.info(`Task ${task.id} - ${task.name} - Due date: ${task.dueDate} (${new Date(task.dueDate).toLocaleString()})`);
+  const allTasksSummary = summarizeTasks(allTasks);
+  logger.info('QueryTasks - Retrieved tasks', { requestId, total: allTasksSummary.count });
+  if (debugEnabled) {
+    logger.debug('QueryTasks summary', { requestId, summary: allTasksSummary });
+    if (rawEnabled) {
+      logger.debug('QueryTasks raw tasks', { requestId, tasks: allTasks });
     }
-  });
+  }
 
   let filteredTasks = [...allTasks];
   let filteringApplied = false;
@@ -377,12 +390,11 @@ async function handleQueryTasks(args, baseResult) {
   if (args.dueDateStart) {
     try {
       const startDate = new Date(args.dueDateStart);
-      logger.info(`Filtering by due date start: ${args.dueDateStart} -> ${startDate.toLocaleString()}`);
+      logger.info('Filtering by due date start', { requestId, dueDateStart: args.dueDateStart });
 
       if (!isNaN(startDate)) {
         // Set the start date to the beginning of the day (00:00:00)
         startDate.setHours(0, 0, 0, 0);
-        logger.info(`Adjusted start date: ${startDate.toLocaleString()}`);
 
         filteredTasks = filteredTasks.filter(task => {
           if (!task.dueDate) return false;
@@ -391,9 +403,7 @@ async function handleQueryTasks(args, baseResult) {
           const taskDueDate = new Date(task.dueDate);
 
           // Compare dates ignoring time part
-          const result = taskDueDate >= startDate;
-          logger.info(`  Task ${task.id} - ${task.name} - Due date: ${taskDueDate.toLocaleString()} >= ${startDate.toLocaleString()} = ${result}`);
-          return result;
+          return taskDueDate >= startDate;
         });
 
         filteringApplied = true;
@@ -406,12 +416,11 @@ async function handleQueryTasks(args, baseResult) {
   if (args.dueDateEnd) {
     try {
       const endDate = new Date(args.dueDateEnd);
-      logger.info(`Filtering by due date end: ${args.dueDateEnd} -> ${endDate.toLocaleString()}`);
+      logger.info('Filtering by due date end', { requestId, dueDateEnd: args.dueDateEnd });
 
       if (!isNaN(endDate)) {
         // Set the end date to the end of the day (23:59:59.999)
         endDate.setHours(23, 59, 59, 999);
-        logger.info(`Adjusted end date: ${endDate.toLocaleString()}`);
 
         filteredTasks = filteredTasks.filter(task => {
           if (!task.dueDate) return false;
@@ -420,9 +429,7 @@ async function handleQueryTasks(args, baseResult) {
           const taskDueDate = new Date(task.dueDate);
 
           // Compare dates ignoring time part
-          const result = taskDueDate <= endDate;
-          logger.info(`  Task ${task.id} - ${task.name} - Due date: ${taskDueDate.toLocaleString()} <= ${endDate.toLocaleString()} = ${result}`);
-          return result;
+          return taskDueDate <= endDate;
         });
 
         filteringApplied = true;
@@ -465,6 +472,18 @@ async function handleQueryTasks(args, baseResult) {
   const limit = args.limit || 20;
   if (filteredTasks.length > limit) {
     filteredTasks = filteredTasks.slice(0, limit);
+  }
+
+  logger.info('QueryTasks - Filtered tasks', {
+    requestId,
+    total: filteredTasks.length,
+    limit
+  });
+  if (debugEnabled) {
+    logger.debug('QueryTasks filtered summary', {
+      requestId,
+      summary: summarizeTasks(filteredTasks)
+    });
   }
 
   // Format tasks consistently for AI readability
@@ -771,15 +790,25 @@ async function handleGetNotificationsByTask(args, baseResult) {
  * @param {Object} baseResult - Base result object
  * @returns {Promise<Object>} - Function result
  */
+// eslint-disable-next-line max-lines-per-function, complexity
 async function handleQueryNotifications(args, baseResult) {
+  const requestId = baseResult?.functionCallId;
+  const debugEnabled = isDebugLoggingEnabled();
+  const rawEnabled = shouldLogRaw(requestId);
+
   // Start with all notifications
   let allNotifications = await notificationService.getNotifications();
-  logger.info(`QueryNotifications - Found ${allNotifications.length} total notifications`);
-  allNotifications.forEach(notification => {
-    if (notification.time) {
-      logger.info(`Notification ${notification.id} - Task ID: ${notification.taskId} - Time: ${notification.time} (${new Date(notification.time).toLocaleString()})`);
-    }
+  const allNotificationsSummary = summarizeNotifications(allNotifications);
+  logger.info('QueryNotifications - Retrieved notifications', {
+    requestId,
+    total: allNotificationsSummary.count
   });
+  if (debugEnabled) {
+    logger.debug('QueryNotifications summary', { requestId, summary: allNotificationsSummary });
+    if (rawEnabled) {
+      logger.debug('QueryNotifications raw notifications', { requestId, notifications: allNotifications });
+    }
+  }
 
   let filteredNotifications = [...allNotifications];
   let notifFilteringApplied = false;
@@ -804,13 +833,12 @@ async function handleQueryNotifications(args, baseResult) {
   if (args.timeStart) {
     try {
       const startTime = new Date(args.timeStart);
-      logger.info(`Filtering notifications by time start: ${args.timeStart} -> ${startTime.toLocaleString()}`);
+      logger.info('Filtering notifications by time start', { requestId, timeStart: args.timeStart });
 
       if (!isNaN(startTime)) {
         // For date-only inputs, set to beginning of day
         if (!args.timeStart.includes('T') && !args.timeStart.includes(':')) {
           startTime.setHours(0, 0, 0, 0);
-          logger.info(`Adjusted notification start time: ${startTime.toLocaleString()}`);
         }
 
         filteredNotifications = filteredNotifications.filter(notification => {
@@ -820,9 +848,7 @@ async function handleQueryNotifications(args, baseResult) {
           const notificationTime = new Date(notification.time);
 
           // Compare times
-          const result = notificationTime >= startTime;
-          logger.info(`  Notification ${notification.id} - Time: ${notificationTime.toLocaleString()} >= ${startTime.toLocaleString()} = ${result}`);
-          return result;
+          return notificationTime >= startTime;
         });
 
         notifFilteringApplied = true;
@@ -835,13 +861,12 @@ async function handleQueryNotifications(args, baseResult) {
   if (args.timeEnd) {
     try {
       const endTime = new Date(args.timeEnd);
-      logger.info(`Filtering notifications by time end: ${args.timeEnd} -> ${endTime.toLocaleString()}`);
+      logger.info('Filtering notifications by time end', { requestId, timeEnd: args.timeEnd });
 
       if (!isNaN(endTime)) {
         // For date-only inputs, set to end of day
         if (!args.timeEnd.includes('T') && !args.timeEnd.includes(':')) {
           endTime.setHours(23, 59, 59, 999);
-          logger.info(`Adjusted notification end time: ${endTime.toLocaleString()}`);
         }
 
         filteredNotifications = filteredNotifications.filter(notification => {
@@ -851,9 +876,7 @@ async function handleQueryNotifications(args, baseResult) {
           const notificationTime = new Date(notification.time);
 
           // Compare times
-          const result = notificationTime <= endTime;
-          logger.info(`  Notification ${notification.id} - Time: ${notificationTime.toLocaleString()} <= ${endTime.toLocaleString()} = ${result}`);
-          return result;
+          return notificationTime <= endTime;
         });
 
         notifFilteringApplied = true;
@@ -867,6 +890,18 @@ async function handleQueryNotifications(args, baseResult) {
   const notificationLimit = args.limit || 20;
   if (filteredNotifications.length > notificationLimit) {
     filteredNotifications = filteredNotifications.slice(0, notificationLimit);
+  }
+
+  logger.info('QueryNotifications - Filtered notifications', {
+    requestId,
+    total: filteredNotifications.length,
+    limit: notificationLimit
+  });
+  if (debugEnabled) {
+    logger.debug('QueryNotifications filtered summary', {
+      requestId,
+      summary: summarizeNotifications(filteredNotifications)
+    });
   }
 
   // Convert times to local time format for AI readability
@@ -900,6 +935,7 @@ async function handleQueryNotifications(args, baseResult) {
  * @param {Object} baseResult - Base result object
  * @returns {Promise<Object>} - Function result
  */
+// eslint-disable-next-line complexity
 export async function handleFunctionCall(functionName, args, baseResult) {
   switch (functionName) {
     case 'addTask':
