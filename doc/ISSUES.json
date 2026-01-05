@@ -348,7 +348,7 @@
         "Resolve max-lines-per-function and complexity warnings",
         "Keep file-level documentation current"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "TASK-260105-024",
