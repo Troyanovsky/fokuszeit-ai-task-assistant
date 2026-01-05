@@ -236,7 +236,7 @@ describe('Tasks Store Module', () => {
         const dispatch = createDispatch();
         window.electron.getRecentTasksByProject = vi.fn().mockResolvedValue(mockTasks);
 
-        await tasksModule.actions.fetchTasksByProject({ commit, dispatch }, 'project-1');
+        await tasksModule.actions.fetchTasksByProject({ commit, dispatch }, { projectId: 'project-1' });
 
         expect(commit).toHaveBeenCalledWith('setLoading', true);
         expect(commit).toHaveBeenCalledWith('setError', null);
@@ -251,9 +251,10 @@ describe('Tasks Store Module', () => {
         const dispatch = createDispatch();
         window.electron.getTasksByProject.mockResolvedValue(mockTasks);
 
-        await tasksModule.actions.fetchTasksByProject({ commit, dispatch }, 'project-1', {
-          fetchAll: true,
-        });
+        await tasksModule.actions.fetchTasksByProject(
+          { commit, dispatch },
+          { projectId: 'project-1', fetchAll: true }
+        );
 
         expect(commit).toHaveBeenCalledWith('setLoading', true);
         expect(commit).toHaveBeenCalledWith('setError', null);
@@ -268,10 +269,24 @@ describe('Tasks Store Module', () => {
         const dispatch = createDispatch();
         window.electron.getTasksByProject.mockRejectedValue(new Error('API error'));
 
-        await tasksModule.actions.fetchTasksByProject({ commit, dispatch }, 'project-1');
+        await tasksModule.actions.fetchTasksByProject({ commit, dispatch }, { projectId: 'project-1' });
 
         expect(commit).toHaveBeenCalledWith('setError', 'Failed to load tasks');
         expect(commit).toHaveBeenCalledWith('setLoading', false);
+      });
+    });
+
+    describe('fetchAllTasksByProject', () => {
+      it('should dispatch fetchTasksByProject with fetchAll payload', async () => {
+        const commit = createCommit();
+        const dispatch = createDispatch();
+
+        await tasksModule.actions.fetchAllTasksByProject({ commit, dispatch }, 'project-1');
+
+        expect(dispatch).toHaveBeenCalledWith('fetchTasksByProject', {
+          projectId: 'project-1',
+          fetchAll: true,
+        });
       });
     });
 
@@ -375,7 +390,7 @@ describe('Tasks Store Module', () => {
         expect(commit).toHaveBeenCalledWith('setLoading', true);
         expect(commit).toHaveBeenCalledWith('setError', null);
         expect(window.electron.addTask).toHaveBeenCalled();
-        expect(dispatch).toHaveBeenCalledWith('fetchTasksByProject', 'project-1');
+        expect(dispatch).toHaveBeenCalledWith('fetchTasksByProject', { projectId: 'project-1' });
         expect(commit).toHaveBeenCalledWith('setLoading', false);
       });
 
@@ -440,7 +455,7 @@ describe('Tasks Store Module', () => {
         expect(commit).toHaveBeenCalledWith('setLoading', true);
         expect(commit).toHaveBeenCalledWith('setError', null);
         expect(window.electron.updateTask).toHaveBeenCalled();
-        expect(dispatch).toHaveBeenCalledWith('fetchTasksByProject', 'project-1');
+        expect(dispatch).toHaveBeenCalledWith('fetchTasksByProject', { projectId: 'project-1' });
         expect(commit).toHaveBeenCalledWith('setLoading', false);
       });
 
@@ -484,7 +499,7 @@ describe('Tasks Store Module', () => {
         expect(commit).toHaveBeenCalledWith('setLoading', true);
         expect(commit).toHaveBeenCalledWith('setError', null);
         expect(window.electron.deleteTask).toHaveBeenCalledWith('task-1');
-        expect(dispatch).toHaveBeenCalledWith('fetchTasksByProject', 'project-1');
+        expect(dispatch).toHaveBeenCalledWith('fetchTasksByProject', { projectId: 'project-1' });
         expect(commit).toHaveBeenCalledWith('setLoading', false);
       });
 
@@ -518,7 +533,7 @@ describe('Tasks Store Module', () => {
         expect(commit).toHaveBeenCalledWith('setLoading', true);
         expect(commit).toHaveBeenCalledWith('setError', null);
         expect(window.electron.updateTaskStatus).toHaveBeenCalledWith('task-1', STATUS.DONE);
-        expect(dispatch).toHaveBeenCalledWith('fetchTasksByProject', 'project-1');
+        expect(dispatch).toHaveBeenCalledWith('fetchTasksByProject', { projectId: 'project-1' });
         expect(commit).toHaveBeenCalledWith('setLoading', false);
       });
 

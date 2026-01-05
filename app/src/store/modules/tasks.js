@@ -60,7 +60,7 @@ const actions = {
     return dispatch('fetchTasks', { fetchAll: true });
   },
 
-  async fetchTasksByProject({ commit, dispatch }, projectId, { fetchAll = false } = {}) {
+  async fetchTasksByProject({ commit, dispatch }, { projectId, fetchAll = false } = {}) {
     commit('setLoading', true);
     commit('setError', null);
 
@@ -86,7 +86,7 @@ const actions = {
   },
 
   async fetchAllTasksByProject({ commit, dispatch }, projectId) {
-    return dispatch('fetchTasksByProject', projectId, { fetchAll: true });
+    return dispatch('fetchTasksByProject', { projectId, fetchAll: true });
   },
 
   filterTasks({ commit, dispatch }, filter) {
@@ -172,7 +172,7 @@ const actions = {
         logger.info('Task added successfully, refreshing tasks for project:', dbData.project_id);
         // Refresh the tasks list
         if (dbData.project_id) {
-          dispatch('fetchTasksByProject', dbData.project_id);
+          dispatch('fetchTasksByProject', { projectId: dbData.project_id });
         } else {
           dispatch('fetchTasks');
         }
@@ -243,7 +243,7 @@ const actions = {
         logger.info('Task updated successfully, refreshing tasks for project:', dbData.project_id);
         // Refresh the tasks list
         if (dbData.project_id) {
-          dispatch('fetchTasksByProject', dbData.project_id);
+          dispatch('fetchTasksByProject', { projectId: dbData.project_id });
         } else {
           dispatch('fetchTasks');
         }
@@ -270,7 +270,7 @@ const actions = {
       if (success) {
         // Refresh the tasks list
         if (projectId) {
-          dispatch('fetchTasksByProject', projectId);
+          dispatch('fetchTasksByProject', { projectId });
         } else {
           dispatch('fetchTasks');
         }
@@ -298,7 +298,7 @@ const actions = {
       if (success) {
         // Refresh the tasks list
         if (projectId) {
-          dispatch('fetchTasksByProject', projectId);
+          dispatch('fetchTasksByProject', { projectId });
         } else {
           dispatch('fetchTasks');
         }

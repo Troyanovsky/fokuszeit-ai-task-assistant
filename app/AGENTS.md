@@ -198,6 +198,7 @@ Examples:
 - Use Vuex for global state management
 - Divide store by functional modules (projects,tasks,ai,preferences,recurrence)
 - Use actions for async operations
+- Actions must accept a single payload object; always pass additional flags inside the payload (dispatch only supports `dispatch(type, payload, options)`).
 - Use mutations for state changes
 - Use getters for computed derived state
 

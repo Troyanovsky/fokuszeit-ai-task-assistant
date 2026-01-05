@@ -261,7 +261,7 @@ export default {
     // Function to fetch tasks for the current project
     const fetchTasks = async () => {
       if (props.selectedProject) {
-        await store.dispatch('tasks/fetchTasksByProject', props.selectedProject.id);
+        await store.dispatch('tasks/fetchTasksByProject', { projectId: props.selectedProject.id });
 
         // Batch fetch recurrence rules for all tasks
         const taskIds = tasks.value.map((task) => task.id);
@@ -384,7 +384,7 @@ export default {
       async (newProject) => {
         showingAllTasks.value = false;
         if (newProject) {
-          await store.dispatch('tasks/fetchTasksByProject', newProject.id);
+          await store.dispatch('tasks/fetchTasksByProject', { projectId: newProject.id });
           // Fetch notification counts for all tasks
           await fetchNotificationCounts();
         }
@@ -450,7 +450,7 @@ export default {
 
         // Refresh tasks for the current project to remove the moved task from view
         if (originalProjectId) {
-          await store.dispatch('tasks/fetchTasksByProject', originalProjectId);
+          await store.dispatch('tasks/fetchTasksByProject', { projectId: originalProjectId });
         }
 
         logger.info(
