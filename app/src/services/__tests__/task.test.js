@@ -1,11 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import taskManager from '../task.js';
 import databaseService from '../database.js';
 import notificationService from '../notification.js';
 import { Task, STATUS, PRIORITY } from '../../models/Task.js';
 
 // Create shared spies that can be controlled in individual tests
-const mockTaskValidate = vi.fn(() => true);
 const mockTaskToDatabase = vi.fn(function () {
   return {
     id: this.id || 'task-123',
@@ -103,7 +102,7 @@ vi.mock('../../models/Task.js', () => {
       if (typeof data.dependencies === 'string') {
         try {
           this.dependencies = JSON.parse(data.dependencies);
-        } catch (e) {
+        } catch {
           this.dependencies = [];
         }
       } else {
@@ -120,7 +119,7 @@ vi.mock('../../models/Task.js', () => {
       if (typeof data.labels === 'string') {
         try {
           this.labels = JSON.parse(data.labels);
-        } catch (e) {
+        } catch {
           this.labels = [];
         }
       } else {
@@ -215,7 +214,6 @@ describe('TaskManager', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    // Do NOT set mockTaskValidate.mockReturnValue(true) here as it overrides specific test cases
   });
 
   describe('getTasks', () => {
@@ -300,21 +298,6 @@ describe('TaskManager', () => {
 
   describe('addTask', () => {
     it('should add a task successfully', async () => {
-      const expectedTask = {
-        id: 'task-123',
-        name: 'New Task',
-        description: 'New Task Description',
-        duration: 45,
-        due_date: '2023-01-03T00:00:00.000Z',
-        project_id: 'project-1',
-        dependencies: '[]',
-        status: 'planning',
-        labels: '[]',
-        priority: 'low',
-        created_at: '2023-01-01T00:00:00.000Z',
-        updated_at: '2023-01-01T00:00:00.000Z',
-      };
-
       databaseService.insert.mockReturnValue({ changes: 1 });
 
       const result = await taskManager.addTask(mockTaskData);
@@ -1037,10 +1020,6 @@ describe('TaskManager', () => {
           return mockDate.getTime();
         }
       };
-
-      // Get today's date using original Date constructor (2:30 AM UTC = 10:30 AM CST)
-      const today = new originalDate('2023-01-01T02:30:00.000Z');
-      const todayStr = today.toISOString().split('T')[0];
 
       // Store task data for both query and queryOne mocks
       const taskData = [

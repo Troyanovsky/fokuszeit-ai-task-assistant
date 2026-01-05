@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import tasksModule from '../tasks.js';
-import { Task, STATUS, PRIORITY } from '../../../models/Task.js';
+import { STATUS, PRIORITY } from '../../../models/Task.js';
 
 // Mock window object
 vi.stubGlobal('window', {

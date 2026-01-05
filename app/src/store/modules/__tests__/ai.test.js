@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import aiModule from '../ai.js';
-import aiService from '../../../services/ai.js';
 
 // Mock dependencies
 vi.mock('../../../services/ai.js', () => ({

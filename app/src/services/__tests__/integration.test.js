@@ -4,7 +4,6 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import projectManager from '../project.js';
-import taskManager from '../task.js';
 import notificationService from '../notification.js';
 import databaseService from '../database.js';
 

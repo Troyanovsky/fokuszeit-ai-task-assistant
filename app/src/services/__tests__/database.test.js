@@ -20,7 +20,6 @@ vi.mock('../../../database/migrations/initial.js', () => ({
 }));
 
 describe('DatabaseService', () => {
-  const mockDbPath = '/mock/path/ai-task-assistant.db';
   const mockDirPath = '/mock/path';
   const mockDb = {
     pragma: vi.fn(),

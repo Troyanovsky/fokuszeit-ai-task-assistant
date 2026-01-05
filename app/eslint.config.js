@@ -1,3 +1,6 @@
+/**
+ * ESLint flat config for application sources and tests.
+ */
 import globals from 'globals';
 import pluginJs from '@eslint/js';
 import pluginVue from 'eslint-plugin-vue';
@@ -8,8 +11,7 @@ export default [
     ignores: [
       'node_modules/',
       'dist/',
-      'build/',
-      '**/*.test.js'
+      'build/'
     ]
   },
   // Recommended JavaScript rules
@@ -84,6 +86,22 @@ export default [
       'vue/no-v-html': 'warn',
       'vue/no-unused-components': 'warn',
       'vue/no-unused-vars': ['warn', { 'ignorePattern': '^_e' }],
+    },
+  },
+  {
+    files: ['**/*.test.js'],
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.vitest,
+      },
+    },
+    rules: {
+      'complexity': 'off',
+      'max-lines-per-function': 'off',
     },
   },
   {

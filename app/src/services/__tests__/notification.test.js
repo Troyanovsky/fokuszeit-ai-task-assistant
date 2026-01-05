@@ -42,7 +42,7 @@ vi.mock('electron', () => {
 
 // Import mocks after they are defined
 import databaseService from '../database';
-import { ipcMain, Notification as ElectronNotification, BrowserWindow } from 'electron';
+import { Notification as ElectronNotification, BrowserWindow } from 'electron';
 
 // Add isSupported to the Electron Notification mock
 ElectronNotification.isSupported = vi.fn().mockReturnValue(true);
@@ -168,13 +168,6 @@ describe('NotificationManager', () => {
   describe('deleteNotification', () => {
     it('should delete a notification and cancel its schedule', async () => {
       // Setup a scheduled notification
-      const notification = new Notification({
-        id: 'notif1',
-        taskId: 'task1',
-        time: new Date(Date.now() + 60000),
-        type: TYPE.REMINDER,
-      });
-
       vi.spyOn(notificationService, 'cancelNotification');
       notificationService.scheduledNotifications.set(
         'notif1',
