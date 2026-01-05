@@ -17,7 +17,7 @@ try {
     // We're in the renderer process
     logger = require('./logger.js').default;
   }
-} catch (error) {
+} catch {
   // Fallback console logger
   logger = {
     error: console.error,

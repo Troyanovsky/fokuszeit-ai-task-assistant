@@ -7,7 +7,7 @@ const logger = {
       if (typeof window !== 'undefined' && window.logger) {
         return window.logger.error(message, ...args);
       }
-    } catch (err) {
+    } catch {
       // Fallback to console during initialization or when logger is not available
     }
     return console.error(message, ...args);
@@ -17,7 +17,7 @@ const logger = {
       if (typeof window !== 'undefined' && window.logger) {
         return window.logger.warn(message, ...args);
       }
-    } catch (err) {
+    } catch {
       // Fallback to console during initialization or when logger is not available
     }
     return console.warn(message, ...args);
@@ -27,7 +27,7 @@ const logger = {
       if (typeof window !== 'undefined' && window.logger) {
         return window.logger.info(message, ...args);
       }
-    } catch (err) {
+    } catch {
       // Fallback to console during initialization or when logger is not available
     }
     return console.info(message, ...args);
@@ -37,7 +37,7 @@ const logger = {
       if (typeof window !== 'undefined' && window.logger) {
         return window.logger.verbose(message, ...args);
       }
-    } catch (err) {
+    } catch {
       // Fallback to console during initialization or when logger is not available
     }
     return console.debug(message, ...args);
@@ -47,7 +47,7 @@ const logger = {
       if (typeof window !== 'undefined' && window.logger) {
         return window.logger.debug(message, ...args);
       }
-    } catch (err) {
+    } catch {
       // Fallback to console during initialization or when logger is not available
     }
     return console.debug(message, ...args);
@@ -57,7 +57,7 @@ const logger = {
       if (typeof window !== 'undefined' && window.logger) {
         return window.logger.silly(message, ...args);
       }
-    } catch (err) {
+    } catch {
       // Fallback to console during initialization or when logger is not available
     }
     return console.debug(message, ...args);
@@ -69,7 +69,7 @@ const logger = {
       if (typeof window !== 'undefined' && window.logger) {
         return window.logger.logError(error, context);
       }
-    } catch (err) {
+    } catch {
       // Fallback to console during initialization or when logger is not available
     }
 

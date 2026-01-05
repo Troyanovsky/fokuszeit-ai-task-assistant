@@ -129,7 +129,7 @@ const actions = {
   },
 
   // Add a new recurrence rule
-  async addRecurrenceRule({ commit, dispatch }, ruleData) {
+  async addRecurrenceRule({ commit }, ruleData) {
     try {
       const result = await window.electron.addRecurrenceRule(ruleData);
       if (result) {
@@ -146,7 +146,7 @@ const actions = {
   },
 
   // Update a recurrence rule
-  async updateRecurrenceRule({ commit, dispatch }, { ruleId, updateData }) {
+  async updateRecurrenceRule({ commit }, { ruleId, updateData }) {
     try {
       const result = await window.electron.updateRecurrenceRule(ruleId, updateData);
       if (result) {
@@ -163,7 +163,7 @@ const actions = {
   },
 
   // Delete a recurrence rule
-  async deleteRecurrenceRule({ commit, dispatch }, ruleId) {
+  async deleteRecurrenceRule({ commit }, ruleId) {
     try {
       const result = await window.electron.deleteRecurrenceRule(ruleId);
       if (result) {
@@ -180,7 +180,7 @@ const actions = {
   },
 
   // Delete recurrence rule by task ID
-  async deleteRecurrenceRuleByTaskId({ commit, dispatch }, taskId) {
+  async deleteRecurrenceRuleByTaskId({ commit }, taskId) {
     try {
       const result = await window.electron.deleteRecurrenceRuleByTask(taskId);
       if (result) {

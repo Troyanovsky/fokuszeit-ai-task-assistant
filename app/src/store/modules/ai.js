@@ -1,3 +1,4 @@
+// Vuex store module for AI assistant state and configuration.
 // Initial state
 import logger from '../../services/logger';
 
@@ -46,7 +47,7 @@ const actions = {
     }
   },
 
-  async sendMessage({ commit, dispatch, state }, message) {
+  async sendMessage({ commit }, message) {
     commit('setProcessing', true);
     commit('setError', null);
 

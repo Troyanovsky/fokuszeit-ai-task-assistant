@@ -1,3 +1,4 @@
+<!-- Recurrence configuration form for task scheduling. -->
 <template>
   <div class="recurrence-form">
     <div class="flex items-center justify-between mb-3">
@@ -94,7 +95,6 @@
 <script>
 import { reactive, computed, watch, onMounted, ref } from 'vue';
 import { FREQUENCY } from '../../models/RecurrenceRule.js';
-import logger from '../../services/logger.js';
 
 export default {
   name: 'RecurrenceForm',

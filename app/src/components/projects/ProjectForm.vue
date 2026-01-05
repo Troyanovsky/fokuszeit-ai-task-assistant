@@ -1,3 +1,4 @@
+<!-- Project form for creating and editing projects. -->
 <template>
   <div class="project-form">
     <h3 class="text-lg font-medium mb-3">{{ project ? 'Edit Project' : 'Add Project' }}</h3>
@@ -45,7 +46,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue';
+import { reactive, onMounted } from 'vue';
 
 export default {
   name: 'ProjectForm',

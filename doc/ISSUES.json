@@ -293,6 +293,90 @@
         "Add E2E tests to CI pipeline"
       ],
       "passes": false
+    },
+    {
+      "id": "TASK-260105-020",
+      "type": "task",
+      "epic": "Code Quality",
+      "title": "Clean up unused imports and parameters flagged by ESLint",
+      "description": "ESLint reports multiple unused imports/parameters across components, services, and store modules. These are low-risk cleanup items that can be grouped into a single task.",
+      "acceptance_criteria": [
+        "Remove or properly use unused imports/parameters in ESLint warning locations",
+        "Prefer underscore-prefixed arguments where required by API signatures",
+        "Ensure ESLint no-unused-vars warnings are resolved for the grouped files",
+        "Verify no behavior changes in the affected files"
+      ],
+      "passes": true
+    },
+    {
+      "id": "TASK-260105-021",
+      "type": "task",
+      "epic": "IPC Architecture",
+      "title": "Refactor oversized IPC handler setup to reduce function length",
+      "description": "setupIpcHandlers in app/electron-main/ipcHandlers.js exceeds the max-lines-per-function threshold, making the file harder to maintain and review.",
+      "acceptance_criteria": [
+        "Split setupIpcHandlers into smaller, focused helpers",
+        "Preserve existing IPC behavior and handler registrations",
+        "Keep file-level documentation up to date after refactor",
+        "Resolve the max-lines-per-function lint warning"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-260105-022",
+      "type": "task",
+      "epic": "UI Components",
+      "title": "Reduce SmartProjectBase and ProjectTaskList complexity",
+      "description": "SmartProjectBase.vue and ProjectTaskList.vue contain arrow functions with high cyclomatic complexity, indicating logic that should be decomposed for clarity and maintainability.",
+      "acceptance_criteria": [
+        "Extract complex branches into helper functions or composables",
+        "Keep component behavior unchanged",
+        "Resolve ESLint complexity warnings in both files",
+        "Add/update documentation for any new helpers"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-260105-023",
+      "type": "task",
+      "epic": "UI Components",
+      "title": "Refactor TaskForm setup for length and complexity",
+      "description": "TaskForm.vue exceeds the max-lines-per-function threshold and includes a complex async arrow function. This should be split into smaller units for readability.",
+      "acceptance_criteria": [
+        "Extract TaskForm setup logic into focused helpers/composables",
+        "Preserve existing TaskForm behavior and validations",
+        "Resolve max-lines-per-function and complexity warnings",
+        "Keep file-level documentation current"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-260105-024",
+      "type": "task",
+      "epic": "Models",
+      "title": "Simplify Task and RecurrenceRule constructors",
+      "description": "Task and RecurrenceRule constructors exceed ESLint complexity limits, suggesting that validation/normalization logic should be extracted for clarity.",
+      "acceptance_criteria": [
+        "Extract validation/normalization logic into helper functions",
+        "Keep model behavior and data mappings unchanged",
+        "Resolve constructor complexity warnings",
+        "Document non-obvious validation rules"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-260105-025",
+      "type": "task",
+      "epic": "Projects",
+      "title": "Reduce deleteProject complexity in project service",
+      "description": "deleteProject in app/src/services/project.js exceeds ESLint complexity limits, indicating logic that should be decomposed for clarity.",
+      "acceptance_criteria": [
+        "Extract conditional branches into small helper functions",
+        "Keep delete behavior and side effects unchanged",
+        "Resolve ESLint complexity warning in deleteProject",
+        "Add/update documentation for the new helpers"
+      ],
+      "passes": false
     }
   ]
 }

@@ -1,3 +1,4 @@
+<!-- Settings view for AI configuration and scheduling preferences. -->
 <template>
   <div class="settings-view h-full overflow-y-auto p-8">
     <div class="flex justify-between items-center mb-6">
@@ -160,7 +161,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useStore } from 'vuex';
 
 export default {
