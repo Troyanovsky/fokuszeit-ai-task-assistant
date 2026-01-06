@@ -30,12 +30,18 @@ export default {
           .dispatch('tasks/getTaskById', notification.taskId)
           .then((task) => {
             if (task) {
-              // Navigate to the project containing the task
-              router.push({
-                name: 'project',
-                params: { id: task.projectId },
-                query: { focusTaskId: task.id },
-              });
+              // Find the project in the store
+              const project = store.getters['projects/allProjects'].find(
+                (p) => p.id === task.projectId
+              );
+              if (project) {
+                // Select the project containing the task in the store
+                store.dispatch('projects/selectProject', project);
+                // Navigate to Home to view the selected project
+                router.push({ name: 'Home' });
+              } else {
+                logger.warn(`Project with id ${task.projectId} not found`);
+              }
             }
           })
           .catch((error) => {

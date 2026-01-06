@@ -196,7 +196,7 @@
         "Verify all router references throughout the codebase",
         "Add tests for notification-triggered navigation"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "BUG-250627-014",
