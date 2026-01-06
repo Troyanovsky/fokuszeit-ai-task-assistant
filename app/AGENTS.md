@@ -87,6 +87,53 @@ npm run lint
 npm run format
 ```
 
+### IPC Communication Patterns
+
+#### Request Flow (Renderer → Main → Renderer)
+For command/query operations where the renderer expects a response:
+
+```
+Renderer: window.electron.methodName(payload)
+    ↓
+Preload: ipcRenderer.invoke('channel:name', payload)
+    ↓
+Main: ipcMain.handle('channel:name', async (event, payload) => { ... })
+    ↓
+Service layer processes request
+    ↓
+Main: return result to renderer
+```
+
+#### Event Flow (Main → Renderer)
+For one-way notifications from main to renderer (e.g., UI updates after background operations):
+
+```
+Main:
+  const mainWindow = BrowserWindow.getAllWindows()[0];
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('channel:name', data);
+  }
+    ↓
+Renderer: window.electron.receive(channelName, callback)
+    ↓
+Preload: ipcRenderer.on(channelName, callback)
+```
+
+**Critical**: Always use `webContents.send()` for sending events to the renderer process. Do NOT use `ipcMain.emit()` as it may not properly reach the renderer process.
+
+#### Example: Notification Service
+```javascript
+// In main process service (e.g., notification.js)
+import { BrowserWindow } from 'electron';
+
+function notifyRenderer(eventData) {
+  const mainWindow = BrowserWindow.getAllWindows()[0];
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('notification:received', eventData);
+  }
+}
+```
+
 ### Logging Guidelines
 - Default logs must be summary-level only (counts, IDs, and action results).
 - Use `debug` for any per-entity or payload-level logging.
