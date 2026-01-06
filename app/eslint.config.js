@@ -39,6 +39,10 @@ export default [
       'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
       'eqeqeq': ['error', 'always'],
       'no-unused-vars': ['warn', { 'argsIgnorePattern': '^_e' }],
+      'no-restricted-syntax': ['error', {
+        selector: 'CallExpression[callee.name="require"]',
+        message: 'Use ESM imports instead of require() in ESM modules'
+      }],
       'complexity': ['warn', 10],
       'max-len': ['warn', {
         'code': 120,
@@ -102,6 +106,16 @@ export default [
     rules: {
       'complexity': 'off',
       'max-lines-per-function': 'off',
+    },
+  },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'commonjs',
+    },
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
   {

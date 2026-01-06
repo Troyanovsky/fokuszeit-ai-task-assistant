@@ -5,36 +5,7 @@
 
 import databaseService from './database.js';
 import recurrenceService from './recurrence.js';
-
-// Determine which logger to use based on the environment
-let logger;
-try {
-  // Check if we're in the main process (Node.js environment)
-  if (typeof window === 'undefined') {
-    // We're in the main process
-    logger = require('../../electron-main/logger.js').default;
-  } else {
-    // We're in the renderer process
-    logger = require('./logger.js').default;
-  }
-} catch {
-  // Fallback console logger
-  logger = {
-    error: console.error,
-    warn: console.warn,
-    info: console.info,
-    debug: console.debug,
-    verbose: console.debug,
-    silly: console.debug,
-    logError: (error, context = '') => {
-      if (error instanceof Error) {
-        console.error(`${context}: ${error.message}`, error.stack);
-      } else {
-        console.error(`${context}: ${error}`);
-      }
-    },
-  };
-}
+import logger from '../../electron-main/logger.js';
 
 class DataIntegrityService {
   /**

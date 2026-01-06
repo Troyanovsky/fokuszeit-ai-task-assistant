@@ -181,7 +181,7 @@
         "Add linting rules to prevent require() in ESM files",
         "Test logging in all affected services"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "BUG-250627-013",
