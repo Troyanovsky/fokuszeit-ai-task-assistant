@@ -252,7 +252,7 @@
       "type": "task",
       "epic": "Documentation",
       "title": "Update out-of-date documentation",
-      "description": "doc/Folder_Structure.md lists files that no longer exist (e.g., TaskList.vue), reducing trust in documentation.",
+      "description": "doc/Folder_Structure.md listed files that no longer exist (e.g., TaskList.vue), reducing trust in documentation.",
       "acceptance_criteria": [
         "Audit all documentation files for outdated references",
         "Update or remove references to non-existent files",
@@ -260,7 +260,7 @@
         "Establish documentation maintenance process",
         "Run documentation validation in CI"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "TASK-250627-018",

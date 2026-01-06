@@ -2,11 +2,10 @@ This documentation is the folder structure for the project. It may be used to fi
 
 ```
 └── 📁ai-task-assistant
+    └── 📁.github
+        └── 📁workflows
+            └── lint.yml
     └── 📁app
-        └── .DS_Store
-        └── .eslintrc.cjs
-        └── .eslintrc.js
-        └── .prettierrc
         └── 📁.vscode
             └── extensions.json
         └── 📁database
@@ -18,18 +17,24 @@ This documentation is the folder structure for the project. It may be used to fi
             └── 📁__tests__
                 └── aiService.test.js
             └── aiService.js
+            └── functionHandlers.js
             └── ipcHandlers.js
             └── logger.js
+        └── AGENTS.md
         └── electron.js
+        └── eslint.config.js
         └── index.html
         └── package-lock.json
         └── package.json
         └── postcss.config.js
         └── preload.cjs
+        └── .prettierrc
         └── 📁public
             └── vite.svg
         └── 📁src
             └── App.vue
+            └── main.js
+            └── style.css
             └── 📁components
                 └── 📁ai
                     └── ChatBox.vue
@@ -39,16 +44,25 @@ This documentation is the folder structure for the project. It may be used to fi
                     └── ProjectForm.vue
                     └── ProjectItem.vue
                     └── ProjectList.vue
+                └── 📁recurrence
+                    └── RecurrenceForm.vue
+                    └── RecurrenceIndicator.vue
+                └── 📁smart
+                    └── OverdueSmartProject.vue
+                    └── PlanDayResult.vue
+                    └── SmartProjectBase.vue
+                    └── TodayProgress.vue
+                    └── TodaySmartProject.vue
                 └── 📁system
                     └── NotificationListener.vue
                 └── 📁tasks
-                    └── PlanDayResult.vue
+                    └── ProjectTaskList.vue
                     └── TaskFilter.vue
                     └── TaskForm.vue
                     └── TaskItem.vue
-                    └── TaskList.vue
-            └── main.js
             └── 📁models
+                └── 📁__tests__
+                    └── RecurrenceRule.test.js
                 └── Notification.js
                 └── Project.js
                 └── RecurrenceRule.js
@@ -58,16 +72,20 @@ This documentation is the folder structure for the project. It may be used to fi
             └── 📁services
                 └── 📁__tests__
                     └── database.test.js
+                    └── integration.test.js
                     └── notification.test.js
                     └── preferences.test.js
                     └── project.test.js
+                    └── recurrence.test.js
                     └── task.test.js
+                └── dataIntegrity.js
                 └── database.js
                 └── functionSchemas.js
                 └── logger.js
                 └── notification.js
                 └── preferences.js
                 └── project.js
+                └── recurrence.js
                 └── task.js
             └── 📁store
                 └── index.js
@@ -80,22 +98,29 @@ This documentation is the folder structure for the project. It may be used to fi
                     └── ai.js
                     └── preferences.js
                     └── projects.js
+                    └── recurrence.js
                     └── tasks.js
-            └── style.css
             └── 📁utils
+                └── 📁__tests__
+                    └── loggingConfig.test.js
+                    └── loggingSanitizers.test.js
                 └── logExample.js
+                └── loggingConfig.js
+                └── loggingSanitizers.js
             └── 📁views
                 └── HomeView.vue
                 └── SettingsView.vue
         └── tailwind.config.js
         └── vite.config.js
-    └── 📁Docs
+    └── 📁doc
         └── Folder_Structure.md
-        └── Issue_Tracker.md
+        └── ISSUES.json
         └── logging.md
         └── PRD.md
-        └── Tech_System.md
+        └── TECHNICAL_REVIEW.md
     └── .gitignore
+    └── AGENTS.md
+    └── CLAUDE.md
     └── LICENSE
     └── README.md
 ```
