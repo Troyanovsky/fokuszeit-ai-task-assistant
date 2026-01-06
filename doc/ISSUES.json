@@ -75,7 +75,7 @@
         "Integrate recurrence with AI natural language parsing",
         "Add tests for recurrence generation logic"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "BUG-250627-006",
@@ -375,6 +375,83 @@
         "Keep delete behavior and side effects unchanged",
         "Resolve ESLint complexity warning in deleteProject",
         "Add/update documentation for the new helpers"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-260106-026",
+      "type": "task",
+      "epic": "Database",
+      "title": "Implement atomic transactions for project deletion",
+      "description": "Project deletion lacks atomic transactions. Cascading deletes should use better-sqlite3 transaction blocks to ensure data integrity across related tables (tasks, notifications, recurrence rules).",
+      "acceptance_criteria": [
+        "Audit all project deletion paths in project service",
+        "Wrap cascading delete operations in transaction blocks",
+        "Test rollback behavior on deletion failures",
+        "Ensure ON DELETE CASCADE constraints are properly utilized",
+        "Document transaction pattern for other multi-table operations"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-260106-027",
+      "type": "task",
+      "epic": "Database",
+      "title": "Remove redundant manual deletion loops",
+      "description": "Manual deletion loops exist despite ON DELETE CASCADE constraints in the database schema. These redundant operations increase code complexity and maintenance burden.",
+      "acceptance_criteria": [
+        "Audit all deletion paths for CASCADE-redundant manual deletes",
+        "Remove manual deletion loops where CASCADE handles cleanup",
+        "Verify schema has proper CASCADE constraints defined",
+        "Add tests to CASCADE cleanup after removal of manual loops",
+        "Document CASCADE pattern for future developers"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-260106-028",
+      "type": "task",
+      "epic": "Tasks",
+      "title": "Add completedAt timestamp for accurate recent task tracking",
+      "description": "getRecentTasks logic is based on due_date rather than completion date. Add a completedAt timestamp to tasks for accurate 'recently completed' queries.",
+      "acceptance_criteria": [
+        "Add completed_at column to tasks table schema",
+        "Update Task model to handle completedAt field",
+        "Set completedAt on task status changes to 'done'",
+        "Refactor getRecentTasks to use completedAt",
+        "Add migration script for existing tasks",
+        "Update UI to display completion time when relevant"
+      ],
+      "passes": false
+    },
+    {
+      "id": "BUG-260106-029",
+      "type": "bug",
+      "epic": "Architecture",
+      "title": "Resolve circular dependency between project and task services",
+      "description": "There is a circular dependency risk between project.js and task.js services that could cause runtime errors or initialization issues.",
+      "acceptance_criteria": [
+        "Analyze and document the dependency chain between project and task services",
+        "Refactor to eliminate circular dependencies",
+        "Consider introducing a shared interface or event-driven pattern",
+        "Add tests to prevent regression of circular dependencies",
+        "Document proper pattern for cross-service operations"
+      ],
+      "passes": false
+    },
+    {
+      "id": "TASK-260106-030",
+      "type": "task",
+      "epic": "UI Components",
+      "title": "Separate presentation logic from business logic in components",
+      "description": "Vue components contain mixed presentation and business logic. Business logic should be moved to models or composables for better testability and reusability.",
+      "acceptance_criteria": [
+        "Audit components for business logic that should be extracted",
+        "Move data transformation logic to models",
+        "Move reusable behavior to composables",
+        "Keep only presentation logic in components",
+        "Add tests for extracted business logic",
+        "Document separation pattern in AGENTS.md"
       ],
       "passes": false
     }

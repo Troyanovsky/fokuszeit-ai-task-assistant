@@ -96,6 +96,14 @@ Virtual collections based on computed filters (no separate database table):
 - `OverdueSmartProject.vue` - Shows overdue tasks
 - `SmartProjectBase.vue` - Abstract base with shared logic
 
+### NotificationListener Pattern
+
+`NotificationListener.vue` is a non-visible component that handles system notification clicks:
+- Listens for `notification:received` events from main process
+- Properly cleans up listeners on unmount (stores wrapped listener reference)
+- Focuses tasks by selecting their project and navigating to Home route
+- Demonstrates proper IPC event handling pattern
+
 ## Database Schema
 
 ```sql
@@ -123,6 +131,8 @@ recurrence_rules (id, task_id, frequency, interval, end_date, count, created_at)
 
 **ESLint limits**: 120 char line length, 80 lines per function (400 for Vue components)
 
+**ESLint enforces ESM**: All `.js` files must use `import` statements; `require()` is restricted. Test files are covered by linting.
+
 ## Important Patterns
 
 ### Model Pattern
@@ -143,28 +153,22 @@ ipcMain.handle('channel:name', async (_, data) => {
 });
 ```
 
+**Critical**: Never use `ipcMain.emit()` for renderer communication. It bypasses context isolation. Always use `webContents.send()` from the main process to send events to the renderer.
+
 ### AI Function Addition Pattern
 1. Add schema to `functionSchemas.js`
 2. Implement handler in `functionHandlers.js`
 3. AI service routes call to handler automatically
 
-## Known Issues to Address
-
-From `/doc/review.md`:
-1. **Transaction integrity**: Project deletion lacks atomic transactions (use `better-sqlite3` transactions)
-2. **Redundant deletion**: Manual deletion loops exist despite `ON DELETE CASCADE` constraints
-3. **getRecentTasks logic**: Based on due_date, not completion date (consider adding `completedAt` timestamp)
-4. **Circular dependency risk**: Between `project.js` and `task.js` services
-5. **IPC coupling**: Many individual functions vs. generic invoke pattern in preload
-6. **Event listener cleanup**: Manual management is error-prone (consider `useIpcListener` composable)
-7. **Mixed logic in UI**: Presentation/business logic mixed in components (move to models/composables)
-
 ## Logging
 
 Use `electron-log` for all logging (never `console.log`):
 - Main process: `import logger from './electron-main/logger.js'`
+- Services: `import logger from '../../electron-main/logger.js'` (direct import, no conditional logic)
 - Renderer: `import logger from './services/logger.js'`
 - Methods: `logger.info()`, `logger.warn()`, `logger.error()`, `logger.logError(error, context)`
+
+**Important**: ESLint enforces ESM imports - `require()` is not allowed in `.js` files.
 
 ## Key Reference Files
 
