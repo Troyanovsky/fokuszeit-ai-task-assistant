@@ -136,6 +136,34 @@ export default {
       return labels[formData.frequency] || '';
     });
 
+    const parseDateOnly = (dateValue) => {
+      if (!dateValue) return null;
+      if (dateValue instanceof Date) {
+        return new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
+      }
+      if (typeof dateValue === 'string') {
+        const match = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (match) {
+          const year = Number(match[1]);
+          const month = Number(match[2]);
+          const day = Number(match[3]);
+          return new Date(year, month - 1, day);
+        }
+        const parsed = new Date(dateValue);
+        return isNaN(parsed.getTime()) ? null : parsed;
+      }
+      return null;
+    };
+
+    const formatDateOnly = (dateValue) => {
+      const parsed = parseDateOnly(dateValue);
+      if (!parsed) return '';
+      const year = parsed.getFullYear();
+      const month = String(parsed.getMonth() + 1).padStart(2, '0');
+      const day = String(parsed.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     // Preview text
     const previewText = computed(() => {
       if (!hasRecurrence.value) return '';
@@ -143,8 +171,8 @@ export default {
       let text = `Repeats every ${formData.interval} ${intervalLabel.value}`;
 
       if (endCondition.value === 'date' && formData.endDate) {
-        const endDate = new Date(formData.endDate);
-        text += ` until ${endDate.toLocaleDateString()}`;
+        const endDate = parseDateOnly(formData.endDate);
+        text += endDate ? ` until ${endDate.toLocaleDateString()}` : '';
       } else if (endCondition.value === 'count' && formData.count > 0) {
         text += ` for ${formData.count} occurrences`;
       }
@@ -196,7 +224,7 @@ export default {
 
         if (props.initialRule.endDate) {
           endCondition.value = 'date';
-          formData.endDate = new Date(props.initialRule.endDate).toISOString().split('T')[0];
+          formData.endDate = formatDateOnly(props.initialRule.endDate);
         } else if (props.initialRule.count) {
           endCondition.value = 'count';
           formData.count = props.initialRule.count;

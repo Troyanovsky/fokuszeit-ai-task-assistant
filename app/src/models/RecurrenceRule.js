@@ -44,8 +44,8 @@ class RecurrenceRule {
     if (this.interval <= 0) {
       return false;
     }
-    // Count should be null or a positive number
-    if (this.count !== null && this.count <= 0) {
+    // Count should be null or a positive number (total occurrences, including the current task)
+    if (this.count !== null && this.count < 1) {
       return false;
     }
     return true;
@@ -61,7 +61,7 @@ class RecurrenceRule {
       task_id: this.taskId,
       frequency: this.frequency,
       interval: this.interval,
-      end_date: this.endDate ? this.endDate.toISOString() : null,
+      end_date: this.endDate ? this._formatDateOnly(this.endDate) : null,
       count: this.count,
       created_at: this.createdAt.toISOString(),
     };
@@ -134,10 +134,32 @@ class RecurrenceRule {
     if (!dateValue) return null;
     if (dateValue instanceof Date) return dateValue;
     if (typeof dateValue === 'string') {
+      const dateOnlyMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (dateOnlyMatch) {
+        const year = Number(dateOnlyMatch[1]);
+        const month = Number(dateOnlyMatch[2]);
+        const day = Number(dateOnlyMatch[3]);
+        return new Date(year, month - 1, day);
+      }
+
       const parsed = new Date(dateValue);
       return isNaN(parsed.getTime()) ? null : parsed;
     }
     return null;
+  }
+
+  /**
+   * Format a date as YYYY-MM-DD using local calendar values.
+   * @param {Date} dateValue - Date value to format
+   * @returns {string} - Formatted date string
+   * @private
+   */
+  _formatDateOnly(dateValue) {
+    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }
 

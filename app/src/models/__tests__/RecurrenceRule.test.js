@@ -52,7 +52,7 @@ describe('RecurrenceRule', () => {
       const rule = new RecurrenceRule(data);
 
       expect(rule.endDate).toBeInstanceOf(Date);
-      expect(rule.endDate).toEqual(new Date('2024-12-31'));
+      expect(rule.endDate).toEqual(new Date(2024, 11, 31));
     });
 
     it('should handle invalid date strings', () => {
@@ -81,7 +81,7 @@ describe('RecurrenceRule', () => {
 
       expect(rule.validate()).toBe(true);
       expect(rule.endDate).toBeInstanceOf(Date);
-      expect(rule.endDate).toEqual(new Date('2024-12-31'));
+      expect(rule.endDate).toEqual(new Date(2024, 11, 31));
     });
   });
 
@@ -230,7 +230,7 @@ describe('RecurrenceRule', () => {
         taskId: 'task-1',
         frequency: FREQUENCY.WEEKLY,
         interval: 2,
-        endDate: new Date('2024-12-31'),
+        endDate: new Date(2024, 11, 31),
         count: 10,
         createdAt: new Date('2024-01-01'),
       });
@@ -242,7 +242,7 @@ describe('RecurrenceRule', () => {
         task_id: 'task-1',
         frequency: FREQUENCY.WEEKLY,
         interval: 2,
-        end_date: '2024-12-31T00:00:00.000Z',
+        end_date: '2024-12-31',
         count: 10,
         created_at: '2024-01-01T00:00:00.000Z',
       });
@@ -270,7 +270,7 @@ describe('RecurrenceRule', () => {
         task_id: 'task-1',
         frequency: FREQUENCY.MONTHLY,
         interval: 3,
-        end_date: '2024-12-31T00:00:00.000Z',
+        end_date: '2024-12-31',
         count: 5,
         created_at: '2024-01-01T00:00:00.000Z',
       };

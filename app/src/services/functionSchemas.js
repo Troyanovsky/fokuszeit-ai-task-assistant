@@ -404,6 +404,82 @@ export const functionSchemas = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'setTaskRecurrence',
+      description:
+        'Add or update a recurrence rule for a task. This makes the task repeat on a schedule.',
+      parameters: {
+        type: 'object',
+        properties: {
+          taskId: {
+            type: 'string',
+            description: 'ID of the task to set recurrence for',
+          },
+          frequency: {
+            type: 'string',
+            enum: ['daily', 'weekly', 'monthly', 'yearly'],
+            description:
+              'How often the task repeats. daily = every day(s), weekly = every week(s), monthly = every month(s), yearly = every year(s)',
+          },
+          interval: {
+            type: 'number',
+            description:
+              'The interval multiplier for the frequency. For example: interval=2 with frequency=weekly means "every 2 weeks". Default is 1.',
+            default: 1,
+          },
+          endDate: {
+            type: 'string',
+            format: 'date',
+            description:
+              'Optional end date (YYYY-MM-DD format). The recurrence will stop creating new tasks after this date. If not provided, recurrence continues indefinitely or until count is reached.',
+          },
+          count: {
+            type: 'number',
+            description:
+              'Optional maximum number of occurrences. The recurrence will stop after creating this many tasks. If not provided, recurrence continues indefinitely or until endDate is reached.',
+          },
+        },
+        required: ['taskId', 'frequency'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'removeTaskRecurrence',
+      description: 'Remove recurrence from a task. The task will no longer repeat.',
+      parameters: {
+        type: 'object',
+        properties: {
+          taskId: {
+            type: 'string',
+            description: 'ID of the task to remove recurrence from',
+          },
+        },
+        required: ['taskId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'getTaskRecurrence',
+      description:
+        'Get the recurrence rule details for a task. Returns information about how the task repeats.',
+      parameters: {
+        type: 'object',
+        properties: {
+          taskId: {
+            type: 'string',
+            description: 'ID of the task to get recurrence details for',
+          },
+        },
+        required: ['taskId'],
+      },
+    },
+  },
 ];
 
 export default functionSchemas;

@@ -12,6 +12,48 @@ import { v4 as uuidv4 } from 'uuid';
 
 class RecurrenceService {
   /**
+   * Parse a date-only value into a local Date (midnight).
+   * @param {string|Date|null|undefined} dateValue - Date value to parse
+   * @returns {Date|null} - Parsed date or null
+   * @private
+   */
+  _parseDateOnly(dateValue) {
+    if (!dateValue) return null;
+    if (dateValue instanceof Date) {
+      return new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
+    }
+    if (typeof dateValue === 'string') {
+      const dateOnlyMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (dateOnlyMatch) {
+        const year = Number(dateOnlyMatch[1]);
+        const month = Number(dateOnlyMatch[2]);
+        const day = Number(dateOnlyMatch[3]);
+        return new Date(year, month - 1, day);
+      }
+
+      const parsed = new Date(dateValue);
+      if (isNaN(parsed.getTime())) return null;
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+    return null;
+  }
+
+  /**
+   * Format a Date as YYYY-MM-DD using local calendar values.
+   * @param {Date} dateValue - Date value to format
+   * @returns {string|null} - Formatted date string or null
+   * @private
+   */
+  _formatDateOnly(dateValue) {
+    const parsed = this._parseDateOnly(dateValue);
+    if (!parsed) return null;
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
    * Add a new recurrence rule
    * @param {Object} ruleData - Recurrence rule data
    * @returns {boolean} - Success status
@@ -190,7 +232,7 @@ class RecurrenceService {
         name: originalTask.name,
         description: originalTask.description || '',
         duration: originalTask.duration !== null ? originalTask.duration : null,
-        dueDate: newDueDate ? newDueDate.toISOString().split('T')[0] : null, // Format as YYYY-MM-DD
+        dueDate: newDueDate ? this._formatDateOnly(newDueDate) : null, // Format as YYYY-MM-DD
         plannedTime: null, // Reset planned time - user needs to reschedule
         projectId: originalTask.projectId,
         dependencies: this._cloneArray(originalTask.dependencies), // Deep copy array
@@ -248,8 +290,8 @@ class RecurrenceService {
         return false;
       }
 
-      // Check count constraint
-      if (rule.count !== null && rule.count <= 0) {
+      // Check count constraint (count represents total occurrences, including current task)
+      if (rule.count !== null && rule.count <= 1) {
         logger.info('Recurrence ended due to count constraint');
         return false;
       }
@@ -325,7 +367,13 @@ class RecurrenceService {
    * @private
    */
   async _calculateNextOccurrence(completedTask, recurrenceRule) {
-    const baseDate = completedTask.dueDate ? new Date(completedTask.dueDate) : new Date();
+    if (recurrenceRule.count !== null && recurrenceRule.count <= 1) {
+      await this.deleteRecurrenceRule(recurrenceRule.id);
+      return null;
+    }
+
+    const baseDate =
+      this._parseDateOnly(completedTask.dueDate) || this._parseDateOnly(new Date());
     const nextOccurrenceDate = recurrenceRule.getNextOccurrence(baseDate);
 
     if (!nextOccurrenceDate) {
@@ -450,11 +498,11 @@ class RecurrenceService {
   async getExpiredRecurrenceRules() {
     try {
       const rules = await this.getAllRecurrenceRules();
-      const now = new Date();
+      const today = this._parseDateOnly(new Date());
 
       return rules.filter((rule) => {
         // Check if rule has expired due to end date
-        if (rule.endDate && now > rule.endDate) {
+        if (rule.endDate && today && today > rule.endDate) {
           return true;
         }
 

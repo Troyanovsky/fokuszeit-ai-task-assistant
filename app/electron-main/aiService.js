@@ -325,9 +325,36 @@ Use the tools provided to you to help the user with their task & project managem
 
 <current_datetime>{{__CURRENT_DATETIME__}}</current_datetime>
 
+<recurrence>
+Tasks can be set to repeat on a schedule (recurrence). When users want tasks to repeat:
+- Use setTaskRecurrence to add or update recurrence for a task
+- Use removeTaskRecurrence to stop a task from repeating
+- Use getTaskRecurrence to check a task's recurrence settings
+
+Recurrence parameters:
+- frequency: "daily", "weekly", "monthly", or "yearly"
+- interval: How often (default 1, e.g., 2 = "every 2 weeks")
+- endDate: Optional end date in YYYY-MM-DD format
+- count: Optional maximum number of occurrences
+
+Common phrases indicating recurrence:
+- "repeat daily", "every day", "daily task" â†?frequency: "daily"
+- "every week", "weekly", "repeats weekly" â†?frequency: "weekly"
+- "every month", "monthly" â†?frequency: "monthly"
+- "every year", "yearly", "annually" â†?frequency: "yearly"
+- "every 2 days", "every 3 weeks" â†?frequency + interval
+- "until [date]" â†?endDate
+- "for [n] times", "[n] occurrences" â†?count
+
+Example: "Create a daily standup task" â†?addTask then setTaskRecurrence(frequency: "daily")
+Example: "Make this task repeat every week until December 31st" â†?setTaskRecurrence(frequency: "weekly", endDate: "2024-12-31")
+Example: "Stop this task from repeating" â†?removeTaskRecurrence(taskId)
+</recurrence>
+
 <tips>
 - For some queries, you may need to execute multiple tools in a row to find info that the user didn't provide, like task id or notification id.
 - Most of the time, the user won't refer to tasks/projects/notifications with id but names or vague descriptions. In this case, use queryTasks or queryNotifications to find out the id.
+- When creating tasks that should repeat, first create the task with addTask, then use setTaskRecurrence on the returned task ID.
 </tips>`;
 
   try {
@@ -609,3 +636,4 @@ export default {
   processWithLLM,
   executeFunctionCall
 }; 
+

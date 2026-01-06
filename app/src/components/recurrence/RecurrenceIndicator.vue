@@ -1,3 +1,4 @@
+<!-- Recurrence indicator badge for tasks. -->
 <template>
   <span
     v-if="recurrenceRule"
@@ -39,6 +40,25 @@ export default {
   setup(props) {
     const store = useStore();
 
+    const parseDateOnly = (dateValue) => {
+      if (!dateValue) return null;
+      if (dateValue instanceof Date) {
+        return new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
+      }
+      if (typeof dateValue === 'string') {
+        const match = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (match) {
+          const year = Number(match[1]);
+          const month = Number(match[2]);
+          const day = Number(match[3]);
+          return new Date(year, month - 1, day);
+        }
+        const parsed = new Date(dateValue);
+        return isNaN(parsed.getTime()) ? null : parsed;
+      }
+      return null;
+    };
+
     // Get recurrence rule from store (reactive)
     const recurrenceRule = computed(() => {
       return store.getters['recurrence/getRecurrenceRuleByTaskId'](props.taskId);
@@ -67,10 +87,10 @@ export default {
       let tooltip = `Repeats ${recurrenceText.value.toLowerCase()}`;
 
       if (rule.endDate) {
-        const endDate = new Date(rule.endDate);
-        tooltip += ` until ${endDate.toLocaleDateString()}`;
+        const endDate = parseDateOnly(rule.endDate);
+        tooltip += endDate ? ` until ${endDate.toLocaleDateString()}` : '';
       } else if (rule.count) {
-        tooltip += ` for ${rule.count} more occurrences`;
+        tooltip += ` for ${rule.count} occurrences total`;
       }
 
       return tooltip;
