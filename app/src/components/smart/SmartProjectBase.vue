@@ -1,3 +1,8 @@
+<!--
+  SmartProjectBase
+
+  Shared logic for Today/Overdue smart projects: task filtering/sorting and refresh wiring.
+-->
 <template>
   <div class="smart-project-base">
     <slot
@@ -27,7 +32,8 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
 import { Task } from '../../models/Task.js';
 import logger from '../../services/logger';
-import { getTodayDateOnlyLocal } from '../../utils/dateTime.js';
+import { formatDateOnlyLocal } from '../../utils/dateTime.js';
+import { useLocalTodayDate } from './useLocalTodayDate.js';
 
 export default {
   name: 'SmartProjectBase',
@@ -64,27 +70,28 @@ export default {
         }
     );
 
+    const { todayDateStr, start: startTodayDateRefresh, stop: stopTodayDateRefresh } =
+      useLocalTodayDate();
+
     // Smart project tasks based on type
     const todayTasks = computed(() => {
       if (!allTasks.value.length) return [];
 
-      const today = new Date();
-      const todayDateStr = getTodayDateOnlyLocal(); // YYYY-MM-DD (local)
+      const todayDateStrValue = todayDateStr.value;
 
       return allTasks.value.filter((task) => {
         // Check if due date is today
-        if (task.dueDate === todayDateStr) {
+        if (task.dueDate === todayDateStrValue) {
           return true;
         }
 
         // Check if planned time is today
         if (task.plannedTime) {
-          const plannedDate = new Date(task.plannedTime);
-          return (
-            plannedDate.getFullYear() === today.getFullYear() &&
-            plannedDate.getMonth() === today.getMonth() &&
-            plannedDate.getDate() === today.getDate()
-          );
+          /** @type {Date} */
+          const plannedDate =
+            task.plannedTime instanceof Date ? task.plannedTime : new Date(task.plannedTime);
+          const plannedDateOnlyLocal = formatDateOnlyLocal(plannedDate);
+          return plannedDateOnlyLocal === todayDateStrValue;
         }
 
         return false;
@@ -94,12 +101,21 @@ export default {
     const overdueTasks = computed(() => {
       if (!allTasks.value.length) return [];
 
-      const todayDateStr = getTodayDateOnlyLocal(); // YYYY-MM-DD (local)
+      const todayDateStrValue = todayDateStr.value;
 
       return allTasks.value.filter((task) => {
         // Check if due date is before today and task is not done
-        if (task.dueDate && task.dueDate < todayDateStr && task.status !== 'done') {
+        if (task.dueDate && task.dueDate < todayDateStrValue && task.status !== 'done') {
           return true;
+        }
+
+        // Feature parity: planned time before today also counts as overdue (local calendar date)
+        if (task.plannedTime && task.status !== 'done') {
+          /** @type {Date} */
+          const plannedDate =
+            task.plannedTime instanceof Date ? task.plannedTime : new Date(task.plannedTime);
+          const plannedDateOnlyLocal = formatDateOnlyLocal(plannedDate);
+          return plannedDateOnlyLocal !== null && plannedDateOnlyLocal < todayDateStrValue;
         }
 
         return false;
@@ -259,6 +275,9 @@ export default {
       // Load preferences
       store.dispatch('preferences/loadPreferences');
 
+      // Ensure "today" smart projects refresh after local midnight even if no data changes occur
+      startTodayDateRefresh();
+
       // Start checking for missed planned times
       startMissedPlannedTimeCheck();
 
@@ -306,6 +325,8 @@ export default {
     onBeforeUnmount(() => {
       // Stop checking for missed planned times
       stopMissedPlannedTimeCheck();
+
+      stopTodayDateRefresh();
 
       // Remove event listeners when component is unmounted
       try {

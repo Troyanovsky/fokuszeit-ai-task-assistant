@@ -58,15 +58,41 @@ Preload Script (preload.cjs)
 **Key files for AI changes:**
 - `/app/electron-main/aiService.js` - AI orchestration and LLM calls
 - `/app/electron-main/functionHandlers.js` - Function call implementations
+- `/app/electron-main/ipcHandlers.js` - Consolidated IPC request handlers
 - `/app/src/services/functionSchemas.js` - OpenAI function definitions
 
 ### Data Layer Architecture
 
 **Models** (`src/models/`): Handle data transformation between database (snake_case) and application (camelCase). Every model has `toDatabase()` and `fromDatabase()` methods.
 
+- `Project.js` - Project entity
+- `Task.js` - Task entity with dependencies and labels
+- `Notification.js` - Notification entity with type constants
+- `RecurrenceRule.js` - Recurrence rule entity
+
 **Services** (`src/services/`): Singleton business logic classes. Services use models for validation and transformation.
 
+- `project.js` - Project CRUD operations
+- `task.js` - Task CRUD and scheduling operations
+- `notification.js` - Notification CRUD operations
+- `recurrence.js` - Recurrence rule CRUD and task generation
+- `preferences.js` - User preferences management
+- `dataIntegrity.js` - Data integrity checks and cleanup
+- `database.js` - Database connection and query wrapper
+- `functionSchemas.js` - OpenAI function definitions for AI
+
 **Database**: SQLite with `better-sqlite3`. Schema in `database/schema.js` with migrations in `database/migrations/`.
+
+**Utilities** (`src/utils/`): Shared helper modules:
+- `dateTime.js` - Date/time utilities for local calendar dates and UTC timestamps
+- `sqliteErrorHandler.js` - SQLite error parsing and structured error responses
+- `loggingConfig.js` - Logging configuration
+- `loggingSanitizers.js` - Log message sanitization for security
+
+**Data Integrity** (`src/services/dataIntegrity.js`): Service for checking and maintaining data consistency:
+- Finds orphaned tasks, notifications, and recurrence rules
+- Validates recurrence rule data
+- Provides cleanup utilities for expired/orphaned data
 
 **Critical pattern**: Always use parameterized queries to prevent SQL injection.
 
@@ -86,7 +112,7 @@ Modular store structure with actions triggering IPC calls:
 - `store/modules/ai.js` - Chat history
 - `store/modules/preferences.js` - User settings
 - `store/modules/recurrence.js` - Recurrence state
-- `store/modules/notifications.js` - Notification state management
+- `store/modules/notifications.js` - Notification state management (centralized hybrid IPC + store pattern)
 
 **Known inefficiency**: Stores refetch entire lists after CRUD operations. Consider optimistic updates or targeted fetches for performance.
 
@@ -96,6 +122,9 @@ Virtual collections based on computed filters (no separate database table):
 - `TodaySmartProject.vue` - Shows tasks due today
 - `OverdueSmartProject.vue` - Shows overdue tasks
 - `SmartProjectBase.vue` - Abstract base with shared logic
+
+**Note**: Smart projects automatically refresh their local “today” date shortly after local midnight so the
+Today/Overdue views update even if no task data changes occur.
 
 ### NotificationListener Pattern
 
@@ -115,6 +144,11 @@ tasks (id, name, description, duration, due_date, planned_time,
 notifications (id, task_id, time, type, message, created_at)
 recurrence_rules (id, task_id, frequency, interval, end_date, count, created_at)
 ```
+
+**Date/Time Formats**:
+- Date-only fields (`due_date`, `end_date`): `YYYY-MM-DD` (local calendar dates, no timezone semantics)
+- Timestamp fields (`created_at`, `updated_at`, `time`, `planned_time`): ISO 8601 in UTC
+- See `doc/DATE_TIME_FORMATS.md` for detailed specification and validation strategy
 
 - Foreign keys with CASCADE deletes
 - JSON storage for arrays (dependencies, labels)
@@ -221,6 +255,10 @@ Use `electron-log` for all logging (never `console.log`):
 - `/app/electron.js` - Main process entry
 - `/app/preload.cjs` - IPC security bridge
 - `/app/electron-main/aiService.js` - AI orchestration
+- `/app/electron-main/functionHandlers.js` - AI function call implementations
+- `/app/electron-main/ipcHandlers.js` - Consolidated IPC request handlers
 - `/app/database/schema.js` - Database schema
 - `/app/src/store/index.js` - Root store
-- `/app/AGENTS.md` - Detailed AI assistant guide
+- `/app/src/utils/dateTime.js` - Date/time utilities
+- `/app/src/services/dataIntegrity.js` - Data integrity checks
+- `/app/doc/DATE_TIME_FORMATS.md` - Date/time format specification
