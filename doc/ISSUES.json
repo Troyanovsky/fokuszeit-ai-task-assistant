@@ -274,22 +274,6 @@
       "passes": false
     },
     {
-      "id": "TASK-260106-028",
-      "type": "task",
-      "epic": "Tasks",
-      "title": "Add completedAt timestamp for accurate recent task tracking",
-      "description": "getRecentTasks logic is based on due_date rather than completion date. Add a completedAt timestamp to tasks for accurate 'recently completed' queries.",
-      "acceptance_criteria": [
-        "Add completed_at column to tasks table schema",
-        "Update Task model to handle completedAt field",
-        "Set completedAt on task status changes to 'done'",
-        "Refactor getRecentTasks to use completedAt",
-        "Add migration script for existing tasks",
-        "Update UI to display completion time when relevant"
-      ],
-      "passes": false
-    },
-    {
       "id": "BUG-260106-029",
       "type": "bug",
       "epic": "Architecture",
