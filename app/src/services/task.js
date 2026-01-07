@@ -9,6 +9,7 @@ import notificationService from './notification.js';
 import recurrenceService from './recurrence.js';
 import { isDebugLoggingEnabled } from '../utils/loggingConfig.js';
 import { redactTask } from '../utils/loggingSanitizers.js';
+import { coerceDateOnly, formatDateOnlyLocal, getTodayDateOnlyLocal } from '../utils/dateTime.js';
 import logger from '../../electron-main/logger.js';
 
 class TaskManager {
@@ -39,8 +40,8 @@ class TaskManager {
       const twoDaysAgo = new Date(today);
       twoDaysAgo.setDate(today.getDate() - 2);
 
-      // Format date as YYYY-MM-DD for SQLite comparison
-      const twoDaysAgoStr = twoDaysAgo.toISOString().split('T')[0];
+      // Format date as YYYY-MM-DD (local) for SQLite comparison
+      const twoDaysAgoStr = formatDateOnlyLocal(twoDaysAgo);
 
       // Get tasks that are either not done OR are done but due within past 2 days
       const tasks = databaseService.query(
@@ -104,8 +105,8 @@ class TaskManager {
       const twoDaysAgo = new Date(today);
       twoDaysAgo.setDate(today.getDate() - 2);
 
-      // Format date as YYYY-MM-DD for SQLite comparison
-      const twoDaysAgoStr = twoDaysAgo.toISOString().split('T')[0];
+      // Format date as YYYY-MM-DD (local) for SQLite comparison
+      const twoDaysAgoStr = formatDateOnlyLocal(twoDaysAgo);
 
       logger.info(`Querying recent tasks for project_id: ${projectId}`);
       const tasks = databaseService.query(
@@ -680,8 +681,8 @@ class TaskManager {
       threeDaysLater.setDate(today.getDate() + 3);
 
       // Format dates as YYYY-MM-DD for SQLite comparison
-      const todayStr = today.toISOString().split('T')[0];
-      const futureDateStr = threeDaysLater.toISOString().split('T')[0];
+      const todayStr = formatDateOnlyLocal(today);
+      const futureDateStr = formatDateOnlyLocal(threeDaysLater);
 
       const tasks = databaseService.query(
         'SELECT * FROM tasks WHERE due_date BETWEEN ? AND ? AND status != ? ORDER BY due_date ASC',
@@ -701,10 +702,8 @@ class TaskManager {
    */
   async getOverdueTasks() {
     try {
-      // Get today's date to find tasks due before today
-      const today = new Date();
-      // Format date as YYYY-MM-DD for SQLite comparison
-      const todayStr = today.toISOString().split('T')[0];
+      // Get today's local date to find tasks due before today
+      const todayStr = getTodayDateOnlyLocal();
 
       const tasks = databaseService.query(
         'SELECT * FROM tasks WHERE due_date < ? AND status != ? ORDER BY due_date ASC',
@@ -743,10 +742,7 @@ class TaskManager {
    */
   async prioritizeTasks() {
     try {
-      // Get current date
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = getTodayDateOnlyLocal();
 
       // Get all tasks that are not done
       logger.debug('Getting tasks for prioritization with statuses:', STATUS.PLANNING, STATUS.DOING);
@@ -763,15 +759,14 @@ class TaskManager {
 
       // eslint-disable-next-line complexity
       return tasks.sort((a, b) => {
-        // Convert dueDate to string for comparison if it's a Date object
-        const aDueDate =
-          a.dueDate instanceof Date ? a.dueDate.toISOString().split('T')[0] : a.dueDate;
-        const bDueDate =
-          b.dueDate instanceof Date ? b.dueDate.toISOString().split('T')[0] : b.dueDate;
+        const aDueDate = coerceDateOnly(a.dueDate);
+        const bDueDate = coerceDateOnly(b.dueDate);
 
         // Overdue tasks first
-        if (aDueDate < todayStr && bDueDate >= todayStr) return -1;
-        if (bDueDate < todayStr && aDueDate >= todayStr) return 1;
+        if (aDueDate && bDueDate) {
+          if (aDueDate < todayStr && bDueDate >= todayStr) return -1;
+          if (bDueDate < todayStr && aDueDate >= todayStr) return 1;
+        }
 
         // Tasks due today
         if (aDueDate === todayStr && bDueDate !== todayStr) return -1;
@@ -869,7 +864,7 @@ class TaskManager {
   async _getTasksToSchedule(workingHours) {
     // Get current date
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const todayStr = getTodayDateOnlyLocal(); // YYYY-MM-DD (local)
 
     // Get all tasks
     const allTasks = await this.getTasks();
@@ -877,9 +872,7 @@ class TaskManager {
     // Filter tasks due today
     const tasksDueToday = allTasks.filter((task) => {
       if (!task.dueDate) return false;
-      const taskDateStr = task.dueDate.toISOString
-        ? task.dueDate.toISOString().split('T')[0]
-        : task.dueDate;
+      const taskDateStr = coerceDateOnly(task.dueDate);
       return taskDateStr === todayStr;
     });
 
@@ -1285,8 +1278,7 @@ class TaskManager {
         return 0;
       }
 
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      const todayStr = getTodayDateOnlyLocal(); // YYYY-MM-DD (local)
       let rescheduledCount = 0;
 
       for (const task of overdueTasks) {

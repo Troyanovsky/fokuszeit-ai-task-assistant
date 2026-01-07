@@ -276,6 +276,7 @@ import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useStore } from 'vuex';
 import logger from '../../services/logger.js';
 import RecurrenceIndicator from '../recurrence/RecurrenceIndicator.vue';
+import { endOfDayLocalFromDateOnly, parseDateOnlyLocal } from '../../utils/dateTime.js';
 
 export default {
   name: 'TaskItem',
@@ -318,15 +319,16 @@ export default {
         return false;
       }
 
-      // Create date objects for comparison
-      const dueDate = new Date(props.task.dueDate);
-      dueDate.setHours(23, 59, 59); // End of the due date
+      const dueEnd = endOfDayLocalFromDateOnly(props.task.dueDate);
+      if (!dueEnd) {
+        return false;
+      }
 
       // Planned time is already a date string
       const plannedDateTime = new Date(props.task.plannedTime);
 
       // Compare dates
-      return plannedDateTime > dueDate;
+      return plannedDateTime > dueEnd;
     });
 
     // Check if task is overdue (past due date and not done)
@@ -335,11 +337,13 @@ export default {
         return false;
       }
 
-      const dueDate = new Date(props.task.dueDate);
-      dueDate.setHours(23, 59, 59); // End of the due date
+      const dueEnd = endOfDayLocalFromDateOnly(props.task.dueDate);
+      if (!dueEnd) {
+        return false;
+      }
       const now = new Date();
 
-      return now > dueDate;
+      return now > dueEnd;
     });
 
     // Close dropdowns when clicking outside
@@ -421,8 +425,12 @@ export default {
     };
 
     const formatDate = (dateString) => {
-      const date = new Date(dateString);
-      return date.toLocaleDateString();
+      const parsed = parseDateOnlyLocal(dateString);
+      if (parsed) {
+        return parsed.toLocaleDateString();
+      }
+      const fallback = new Date(dateString);
+      return isNaN(fallback.getTime()) ? 'Invalid date' : fallback.toLocaleDateString();
     };
 
     const formatDateTime = (dateTimeString) => {

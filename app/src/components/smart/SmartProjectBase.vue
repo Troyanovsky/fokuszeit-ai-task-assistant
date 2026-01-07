@@ -27,6 +27,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
 import { Task } from '../../models/Task.js';
 import logger from '../../services/logger';
+import { getTodayDateOnlyLocal } from '../../utils/dateTime.js';
 
 export default {
   name: 'SmartProjectBase',
@@ -68,7 +69,7 @@ export default {
       if (!allTasks.value.length) return [];
 
       const today = new Date();
-      const todayDateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      const todayDateStr = getTodayDateOnlyLocal(); // YYYY-MM-DD (local)
 
       return allTasks.value.filter((task) => {
         // Check if due date is today
@@ -93,8 +94,7 @@ export default {
     const overdueTasks = computed(() => {
       if (!allTasks.value.length) return [];
 
-      const today = new Date();
-      const todayDateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      const todayDateStr = getTodayDateOnlyLocal(); // YYYY-MM-DD (local)
 
       return allTasks.value.filter((task) => {
         // Check if due date is before today and task is not done

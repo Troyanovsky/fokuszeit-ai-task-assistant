@@ -251,10 +251,17 @@ import { TYPE } from '../../models/Notification';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../services/logger';
 import RecurrenceForm from '../recurrence/RecurrenceForm.vue';
+import {
+  coerceDateOnly,
+  endOfDayLocalFromDateOnly,
+  formatDateOnlyLocal,
+  getTodayDateOnlyLocal,
+  parseDateOnlyLocal,
+} from '../../utils/dateTime.js';
 
 const DEFAULT_NOTIFICATION_TIME = '09:00';
 
-const toDateInputValue = (date) => date.toISOString().split('T')[0];
+const toDateInputValue = (date) => formatDateOnlyLocal(date);
 
 const toTimeInputValue = (date) => {
   const hours = date.getHours().toString().padStart(2, '0');
@@ -283,8 +290,7 @@ const applyTaskToFormData = (task, formData) => {
   formData.duration = task.duration !== null ? task.duration : 0;
 
   if (task.dueDate) {
-    const date = new Date(task.dueDate);
-    formData.dueDate = toDateInputValue(date);
+    formData.dueDate = coerceDateOnly(task.dueDate) ?? '';
   }
 
   if (task.plannedTime) {
@@ -377,7 +383,7 @@ export default {
   setup(props, { emit }) {
     // Current date in YYYY-MM-DD format for min date attribute
     const currentDate = computed(() => {
-      return toDateInputValue(new Date());
+      return getTodayDateOnlyLocal();
     });
 
     // Current time in HH:MM format
@@ -414,12 +420,12 @@ export default {
         return false;
       }
 
-      const dueDate = new Date(formData.dueDate);
-      dueDate.setHours(23, 59, 59); // End of the due date
+      const dueEnd = endOfDayLocalFromDateOnly(formData.dueDate);
+      if (!dueEnd) return false;
 
       const plannedDateTime = buildDateTimeFromInput(formData.plannedDate, formData.plannedTime);
 
-      return plannedDateTime > dueDate;
+      return plannedDateTime > dueEnd;
     });
 
     // Check if planned time is in the past
@@ -441,16 +447,14 @@ export default {
         return false;
       }
 
-      // Create due date at beginning of day
-      const dueDate = new Date(formData.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
+      const dueStart = parseDateOnlyLocal(formData.dueDate);
+      if (!dueStart) return false;
 
-      // Get current date at beginning of day
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const todayStart = parseDateOnlyLocal(getTodayDateOnlyLocal());
+      if (!todayStart) return false;
 
       // Compare dates (allow today)
-      return dueDate < today;
+      return dueStart < todayStart;
     });
 
     // Function to confirm with user about past dates

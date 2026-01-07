@@ -95,6 +95,7 @@
 <script>
 import { reactive, computed, watch, onMounted, ref } from 'vue';
 import { FREQUENCY } from '../../models/RecurrenceRule.js';
+import { getTodayDateOnlyLocal } from '../../utils/dateTime.js';
 
 export default {
   name: 'RecurrenceForm',
@@ -122,7 +123,7 @@ export default {
 
     // Current date for min date validation
     const currentDate = computed(() => {
-      return new Date().toISOString().split('T')[0];
+      return getTodayDateOnlyLocal();
     });
 
     // Interval label based on frequency

@@ -10,6 +10,7 @@ import { Notification, TYPE } from '../src/models/Notification.js';
 import logger from './logger.js';
 import { isDebugLoggingEnabled, shouldLogRaw } from '../src/utils/loggingConfig.js';
 import { summarizeTasks, summarizeNotifications } from '../src/utils/loggingSanitizers.js';
+import { coerceDateOnly, formatDateOnlyLocal } from '../src/utils/dateTime.js';
 
 /**
  * Utility function to resolve a project ID from a name or ID
@@ -44,47 +45,15 @@ async function resolveProjectId(projectId) {
 function formatToYYYYMMDD(dateString) {
   try {
     logger.info(`Original date input: ${dateString}`);
-    
-    // If it already has time component, extract just the date part
-    if (dateString.includes('T')) {
-      dateString = dateString.split('T')[0];
-      logger.info(`Extracted date part from ISO string: ${dateString}`);
+
+    const formatted = coerceDateOnly(dateString);
+    if (!formatted) {
+      logger.info(`Invalid date format: ${dateString}`);
+      return null;
     }
-    
-    // Validate the date format (YYYY-MM-DD)
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(dateString)) {
-      // If not in YYYY-MM-DD format, try to convert it
-      logger.info(`Date ${dateString} doesn't match YYYY-MM-DD format, parsing as Date`);
-      
-      // Fix: Create date with UTC to prevent timezone issues
-      const [year, month, day] = dateString.split('-');
-      if (year && month && day) {
-        // Ensure month and day are zero-padded
-        const paddedMonth = month.padStart(2, '0');
-        const paddedDay = day.padStart(2, '0');
-        dateString = `${year}-${paddedMonth}-${paddedDay}`;
-        logger.info(`Formatted date with padding: ${dateString}`);
-      } else {
-        // If we can't split it, use the Date object but force UTC
-        const parsedDate = new Date(dateString);
-        if (!isNaN(parsedDate)) {
-          // Use UTC methods to avoid timezone issues
-          const utcYear = parsedDate.getUTCFullYear();
-          const utcMonth = String(parsedDate.getUTCMonth() + 1).padStart(2, '0');
-          const utcDay = String(parsedDate.getUTCDate()).padStart(2, '0');
-          dateString = `${utcYear}-${utcMonth}-${utcDay}`;
-          logger.info(`Parsed and formatted date using UTC: ${dateString}`);
-        } else {
-          logger.info(`Invalid date format: ${dateString}`);
-          return null;
-        }
-      }
-    } else {
-      logger.info(`Date already in correct YYYY-MM-DD format: ${dateString}`);
-    }
-    
-    return dateString;
+
+    logger.info(`Normalized date to YYYY-MM-DD (local calendar): ${formatted}`);
+    return formatted;
   } catch (error) {
     logger.logError(error, 'Error parsing date');
     return null;
@@ -97,14 +66,7 @@ function formatToYYYYMMDD(dateString) {
  * @returns {string|null} - Formatted date string or null if invalid
  */
 function formatDateToYYYYMMDDLocal(dateValue) {
-  if (!(dateValue instanceof Date) || isNaN(dateValue.getTime())) {
-    return null;
-  }
-
-  const year = dateValue.getFullYear();
-  const month = String(dateValue.getMonth() + 1).padStart(2, '0');
-  const day = String(dateValue.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return formatDateOnlyLocal(dateValue);
 }
 
 /**
@@ -539,7 +501,7 @@ async function handleQueryTasks(args, baseResult) {
         formattedTask.dueDate = formattedTask.dueDate.split('T')[0];
       } else if (formattedTask.dueDate instanceof Date) {
         // Convert Date object to YYYY-MM-DD string
-        formattedTask.dueDate = formattedTask.dueDate.toISOString().split('T')[0];
+        formattedTask.dueDate = formatDateOnlyLocal(formattedTask.dueDate);
       }
     }
 

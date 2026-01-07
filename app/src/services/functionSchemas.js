@@ -24,7 +24,7 @@ export const functionSchemas = [
           },
           dueDate: {
             type: 'string',
-            format: 'date-time',
+            format: 'date',
             description:
               'Due date for the task. Provide in the following date-only format `YYYY-MM-DD`.',
           },
@@ -84,7 +84,7 @@ export const functionSchemas = [
           },
           dueDate: {
             type: 'string',
-            format: 'date-time',
+            format: 'date',
             description:
               'Due date for the task. Provide in the following date-only format `YYYY-MM-DD`.',
           },

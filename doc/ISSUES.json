@@ -99,11 +99,16 @@
       "title": "Improve data validation in task service",
       "description": "The task service (app/src/services/task.js) needs improved data validation, especially for date and time formats, to prevent invalid data from being stored in the database.",
       "acceptance_criteria": [
-        "Add validation for all task properties (dates, times, priorities)",
-        "Use a consistent date/time format throughout the application",
+        "Add validation for all task properties (dates, times, priorities, duration, labels, dependencies)",
+        "Validate ISO 8601 format for plannedTime before storage (reject invalid Date objects)",
+        "Validate YYYY-MM-DD format for dueDate before storage (reject malformed dates)",
         "Validate date ranges (due_date must be after created_at)",
+        "Validate duration is positive (> 0)",
+        "Use a consistent date/time format throughout the application",
         "Add validation tests for task creation and updates",
-        "Document validation rules in developer documentation"
+        "Document validation rules in developer documentation",
+        "Document timezone assumptions and expected date/time input formats (see doc/DATE_TIME_FORMATS.md)",
+        "Reject invalid Date objects instead of storing 'Invalid Date' string"
       ],
       "passes": false
     },

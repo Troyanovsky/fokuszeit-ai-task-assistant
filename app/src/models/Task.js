@@ -3,6 +3,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { coerceDateOnly } from '../utils/dateTime.js';
 
 // Task status constants
 export const STATUS = {
@@ -46,16 +47,7 @@ class Task {
    * @private
    */
   _setDueDate(dateValue) {
-    if (dateValue) {
-      if (typeof dateValue === 'string') {
-        this.dueDate = dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;
-      } else {
-        const date = new Date(dateValue);
-        this.dueDate = date.toISOString().split('T')[0];
-      }
-    } else {
-      this.dueDate = null;
-    }
+    this.dueDate = coerceDateOnly(dateValue);
   }
 
   /**
@@ -128,18 +120,7 @@ class Task {
    * @returns {Object} - Database object
    */
   toDatabase() {
-    // Ensure dueDate is a string in YYYY-MM-DD format or null
-    let dueDateStr = null;
-    if (this.dueDate) {
-      if (typeof this.dueDate === 'string') {
-        // If it's already a string, check if it has time component
-        dueDateStr = this.dueDate.includes('T') ? this.dueDate.split('T')[0] : this.dueDate;
-      } else {
-        // Convert Date object to YYYY-MM-DD string
-        const date = new Date(this.dueDate);
-        dueDateStr = date.toISOString().split('T')[0];
-      }
-    }
+    const dueDateStr = coerceDateOnly(this.dueDate);
 
     return {
       id: this.id,
@@ -199,11 +180,8 @@ class Task {
   _setDueDateForUpdate(dateValue) {
     if (dateValue === null) {
       this.dueDate = null;
-    } else if (typeof dateValue === 'string') {
-      this.dueDate = dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;
     } else if (dateValue !== undefined) {
-      const date = new Date(dateValue);
-      this.dueDate = date.toISOString().split('T')[0];
+      this.dueDate = coerceDateOnly(dateValue);
     }
   }
 }
