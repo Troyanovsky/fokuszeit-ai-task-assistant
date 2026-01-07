@@ -62,36 +62,6 @@
       "passes": false
     },
     {
-      "id": "STORY-250627-005",
-      "type": "story",
-      "epic": "Task Management",
-      "title": "Design and implement task recurrence functionality",
-      "description": "Tasks need to support recurring patterns (daily, weekly, monthly, etc.). While the database has a recurrence_rules table, the recurrence logic and UI are not yet implemented.",
-      "acceptance_criteria": [
-        "Design recurrence rule data structure and UI pattern",
-        "Create recurrence configuration component in task form",
-        "Implement recurrence engine for generating recurring task instances",
-        "Handle edge cases (skipped periods, end dates, max occurrences)",
-        "Integrate recurrence with AI natural language parsing",
-        "Add tests for recurrence generation logic"
-      ],
-      "passes": true
-    },
-    {
-      "id": "BUG-250627-006",
-      "type": "bug",
-      "epic": "Notifications",
-      "title": "Review and fix ipcMain.emit usage in notification service",
-      "description": "The sendNotification function in app/src/services/notification.js uses ipcMain.emit for inter-process communication. It's recommended to use webContents.send for sending messages to the renderer process, as ipcMain.emit may not properly reach the renderer.",
-      "acceptance_criteria": [
-        "Review all ipcMain.emit calls in notification.js",
-        "Replace with webContents.send where appropriate",
-        "Test notifications still work correctly after changes",
-        "Document the correct IPC pattern for future developers"
-      ],
-      "passes": true
-    },
-    {
       "id": "BUG-250627-007",
       "type": "bug",
       "epic": "Notifications",
@@ -119,7 +89,7 @@
         "Return user-friendly error messages to the UI",
         "Add error handling tests"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "TASK-250627-009",
@@ -168,53 +138,6 @@
       "passes": false
     },
     {
-      "id": "BUG-250627-012",
-      "type": "bug",
-      "epic": "Logging",
-      "title": "Fix mixed module system and logger selection in services",
-      "description": "Several services attempt to use require(...) inside ESM modules (e.g., app/src/services/task.js, app/src/services/project.js, app/src/services/dataIntegrity.js). In Node ESM, require is not defined; the catch path falls back to console.*, undermining the project's own logging standard.",
-      "acceptance_criteria": [
-        "Audit all services for require() usage in ESM modules",
-        "Replace dynamic require() with proper ESM imports",
-        "Ensure all services use the project's logger consistently",
-        "Remove console.* fallbacks after proper import is established",
-        "Add linting rules to prevent require() in ESM files",
-        "Test logging in all affected services"
-      ],
-      "passes": true
-    },
-    {
-      "id": "BUG-250627-013",
-      "type": "bug",
-      "epic": "Routing",
-      "title": "Fix UI routing mismatch in NotificationListener component",
-      "description": "app/src/components/system/NotificationListener.vue attempts to route to { name: 'project' }, but the router only defines Home and Settings (app/src/router/index.js). This is either stale code or an incomplete feature.",
-      "acceptance_criteria": [
-        "Determine if project route is needed or if code is stale",
-        "If needed: add project route to router configuration",
-        "If not needed: remove or update the routing logic in NotificationListener",
-        "Verify all router references throughout the codebase",
-        "Add tests for notification-triggered navigation"
-      ],
-      "passes": true
-    },
-    {
-      "id": "BUG-250627-014",
-      "type": "bug",
-      "epic": "State Management",
-      "title": "Fix Vuex action API misuse in tasks module",
-      "description": "fetchTasksByProject in app/src/store/modules/tasks.js has a non-standard signature (context, projectId, { fetchAll } = {}). Vuex only passes a single payload argument, so the third parameter is never provided; fetchAllTasksByProject attempts to pass a third argument via dispatch, which Vuex interprets as dispatch options (not payload). This makes 'fetch all vs. recent' per-project behavior unreliable.",
-      "acceptance_criteria": [
-        "Refactor fetchTasksByProject to use standard Vuex action signature",
-        "Pass fetchAll as part of the payload object instead of separate argument",
-        "Update all dispatch calls to fetchTasksByProject accordingly",
-        "Add tests verifying fetchAll behavior works correctly",
-        "Audit other Vuex actions for similar API misuse",
-        "Document correct Vuex action patterns in AGENTS.md"
-      ],
-      "passes": true
-    },
-    {
       "id": "TASK-250627-015",
       "type": "task",
       "epic": "Architecture",
@@ -230,37 +153,6 @@
         "Update AGENTS.md with new structure"
       ],
       "passes": false
-    },
-    {
-      "id": "BUG-250627-016",
-      "type": "bug",
-      "epic": "Logging",
-      "title": "Reduce verbose logging in hot paths",
-      "description": "Task/AI query handlers log extensive per-entity information (e.g., due dates for every task). This hurts performance and increases privacy risk (logs contain personal task content).",
-      "acceptance_criteria": [
-        "Audit all logging in task and AI query handlers",
-        "Reduce verbosity of per-entity logging in hot paths",
-        "Implement log levels (debug, info, warn, error)",
-        "Strip or redact sensitive personal content from logs",
-        "Add toggle for debug logging in development",
-        "Document logging guidelines in AGENTS.md"
-      ],
-      "passes": true
-    },
-    {
-      "id": "TASK-250627-017",
-      "type": "task",
-      "epic": "Documentation",
-      "title": "Update out-of-date documentation",
-      "description": "doc/Folder_Structure.md listed files that no longer exist (e.g., TaskList.vue), reducing trust in documentation.",
-      "acceptance_criteria": [
-        "Audit all documentation files for outdated references",
-        "Update or remove references to non-existent files",
-        "Add script to validate documentation accuracy",
-        "Establish documentation maintenance process",
-        "Run documentation validation in CI"
-      ],
-      "passes": true
     },
     {
       "id": "TASK-250627-018",
@@ -295,20 +187,6 @@
       "passes": false
     },
     {
-      "id": "TASK-260105-020",
-      "type": "task",
-      "epic": "Code Quality",
-      "title": "Clean up unused imports and parameters flagged by ESLint",
-      "description": "ESLint reports multiple unused imports/parameters across components, services, and store modules. These are low-risk cleanup items that can be grouped into a single task.",
-      "acceptance_criteria": [
-        "Remove or properly use unused imports/parameters in ESLint warning locations",
-        "Prefer underscore-prefixed arguments where required by API signatures",
-        "Ensure ESLint no-unused-vars warnings are resolved for the grouped files",
-        "Verify no behavior changes in the affected files"
-      ],
-      "passes": true
-    },
-    {
       "id": "TASK-260105-021",
       "type": "task",
       "epic": "IPC Architecture",
@@ -335,20 +213,6 @@
         "Add/update documentation for any new helpers"
       ],
       "passes": false
-    },
-    {
-      "id": "TASK-260105-023",
-      "type": "task",
-      "epic": "UI Components",
-      "title": "Refactor TaskForm setup for length and complexity",
-      "description": "TaskForm.vue exceeds the max-lines-per-function threshold and includes a complex async arrow function. This should be split into smaller units for readability.",
-      "acceptance_criteria": [
-        "Extract TaskForm setup logic into focused helpers/composables",
-        "Preserve existing TaskForm behavior and validations",
-        "Resolve max-lines-per-function and complexity warnings",
-        "Keep file-level documentation current"
-      ],
-      "passes": true
     },
     {
       "id": "TASK-260105-024",

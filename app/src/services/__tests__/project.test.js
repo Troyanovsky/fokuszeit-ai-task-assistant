@@ -528,4 +528,269 @@ describe('ProjectManager', () => {
       );
     });
   });
+
+  describe('SQLite Error Handling', () => {
+    describe('getProjects', () => {
+      it('should handle SQLITE_BUSY database errors', async () => {
+        const busyError = new Error('Database is locked');
+        busyError.code = 'SQLITE_BUSY';
+        databaseService.query.mockImplementation(() => {
+          throw busyError;
+        });
+
+        const result = await projectManager.getProjects();
+
+        expect(result).toEqual([]);
+        expect(databaseService.query).toHaveBeenCalled();
+      });
+
+      it('should handle SQLITE_CORRUPT database errors', async () => {
+        const corruptError = new Error('Database disk image is malformed');
+        corruptError.code = 'SQLITE_CORRUPT';
+        databaseService.query.mockImplementation(() => {
+          throw corruptError;
+        });
+
+        const result = await projectManager.getProjects();
+
+        expect(result).toEqual([]);
+        expect(databaseService.query).toHaveBeenCalled();
+      });
+
+      it('should handle SQLITE_IOERR database errors', async () => {
+        const ioError = new Error('Disk I/O error');
+        ioError.code = 'SQLITE_IOERR';
+        databaseService.query.mockImplementation(() => {
+          throw ioError;
+        });
+
+        const result = await projectManager.getProjects();
+
+        expect(result).toEqual([]);
+        expect(databaseService.query).toHaveBeenCalled();
+      });
+    });
+
+    describe('getProjectById', () => {
+      it('should handle SQLITE_CANTOPEN database errors', async () => {
+        const cantOpenError = new Error('Cannot open database file');
+        cantOpenError.code = 'SQLITE_CANTOPEN';
+        databaseService.queryOne.mockImplementation(() => {
+          throw cantOpenError;
+        });
+
+        const result = await projectManager.getProjectById('project-1');
+
+        expect(result).toBeNull();
+        expect(databaseService.queryOne).toHaveBeenCalledWith('SELECT * FROM projects WHERE id = ?', [
+          'project-1',
+        ]);
+      });
+
+      it('should handle SQLITE_READONLY database errors', async () => {
+        const readOnlyError = new Error('Database file is read-only');
+        readOnlyError.code = 'SQLITE_READONLY';
+        databaseService.queryOne.mockImplementation(() => {
+          throw readOnlyError;
+        });
+
+        const result = await projectManager.getProjectById('project-1');
+
+        expect(result).toBeNull();
+        expect(databaseService.queryOne).toHaveBeenCalled();
+      });
+    });
+
+    describe('addProject', () => {
+      it('should handle SQLITE_CONSTRAINT_UNIQUE for duplicate project IDs', async () => {
+        const constraintError = new Error('UNIQUE constraint failed: projects.id');
+        constraintError.code = 'SQLITE_CONSTRAINT_UNIQUE';
+        databaseService.insert.mockImplementation(() => {
+          throw constraintError;
+        });
+
+        const result = await projectManager.addProject(mockProject);
+
+        expect(result).toBe(false);
+        expect(databaseService.insert).toHaveBeenCalled();
+      });
+
+      it('should handle SQLITE_CONSTRAINT_NOTNULL for missing required fields', async () => {
+        const notNullError = new Error('NOT NULL constraint failed: projects.name');
+        notNullError.code = 'SQLITE_CONSTRAINT_NOTNULL';
+        databaseService.insert.mockImplementation(() => {
+          throw notNullError;
+        });
+
+        const result = await projectManager.addProject(mockProject);
+
+        expect(result).toBe(false);
+        expect(databaseService.insert).toHaveBeenCalled();
+      });
+
+      it('should handle SQLITE_CONSTRAINT_FOREIGNKEY for invalid references', async () => {
+        const fkError = new Error('FOREIGN KEY constraint failed');
+        fkError.code = 'SQLITE_CONSTRAINT_FOREIGNKEY';
+        databaseService.insert.mockImplementation(() => {
+          throw fkError;
+        });
+
+        const result = await projectManager.addProject(mockProject);
+
+        expect(result).toBe(false);
+        expect(databaseService.insert).toHaveBeenCalled();
+      });
+
+      it('should handle SQLITE_FULL database errors', async () => {
+        const fullError = new Error('Database is full');
+        fullError.code = 'SQLITE_FULL';
+        databaseService.insert.mockImplementation(() => {
+          throw fullError;
+        });
+
+        const result = await projectManager.addProject(mockProject);
+
+        expect(result).toBe(false);
+        expect(databaseService.insert).toHaveBeenCalled();
+      });
+
+      it('should handle SQLITE_TOOBIG for data size errors', async () => {
+        const tooBigError = new Error('String or blob too big');
+        tooBigError.code = 'SQLITE_TOOBIG';
+        databaseService.insert.mockImplementation(() => {
+          throw tooBigError;
+        });
+
+        const result = await projectManager.addProject(mockProject);
+
+        expect(result).toBe(false);
+        expect(databaseService.insert).toHaveBeenCalled();
+      });
+    });
+
+    describe('updateProject', () => {
+      it('should handle SQLITE_CONSTRAINT errors on update', async () => {
+        const constraintError = new Error('Constraint violation');
+        constraintError.code = 'SQLITE_CONSTRAINT';
+        databaseService.update.mockImplementation(() => {
+          throw constraintError;
+        });
+
+        const result = await projectManager.updateProject(mockProject);
+
+        expect(result).toBe(false);
+        expect(databaseService.update).toHaveBeenCalled();
+      });
+    });
+
+    describe('searchProjects', () => {
+      it('should handle database errors during search', async () => {
+        const searchError = new Error('Search failed');
+        searchError.code = 'SQLITE_ERROR';
+        databaseService.query.mockImplementation(() => {
+          throw searchError;
+        });
+
+        const result = await projectManager.searchProjects('test');
+
+        expect(result).toEqual([]);
+        expect(databaseService.query).toHaveBeenCalled();
+      });
+    });
+
+    describe('getProjectCount', () => {
+      it('should handle database errors when counting', async () => {
+        const countError = new Error('Count failed');
+        countError.code = 'SQLITE_ERROR';
+        databaseService.queryOne.mockImplementation(() => {
+          throw countError;
+        });
+
+        const result = await projectManager.getProjectCount();
+
+        expect(result).toBe(0);
+        expect(databaseService.queryOne).toHaveBeenCalledWith(
+          'SELECT COUNT(*) as count FROM projects'
+        );
+      });
+    });
+  });
+
+  describe('Error Context Logging', () => {
+    it('should include project ID in error logs for getProjectById', async () => {
+      const error = new Error('Database error');
+      databaseService.queryOne.mockImplementation(() => {
+        throw error;
+      });
+
+      await projectManager.getProjectById('test-project-id');
+
+      expect(databaseService.queryOne).toHaveBeenCalledWith('SELECT * FROM projects WHERE id = ?', [
+        'test-project-id',
+      ]);
+    });
+
+    it('should include project name in error logs for addProject', async () => {
+      const error = new Error('Insert failed');
+      databaseService.insert.mockImplementation(() => {
+        throw error;
+      });
+
+      await projectManager.addProject(mockProject);
+
+      expect(databaseService.insert).toHaveBeenCalled();
+    });
+
+    it('should include search query in error logs for searchProjects', async () => {
+      const error = new Error('Search failed');
+      databaseService.query.mockImplementation(() => {
+        throw error;
+      });
+
+      await projectManager.searchProjects('test search');
+
+      expect(databaseService.query).toHaveBeenCalledWith(
+        'SELECT * FROM projects WHERE name LIKE ? ORDER BY created_at DESC',
+        ['%test search%']
+      );
+    });
+  });
+
+  describe('Error Recovery', () => {
+    it('should continue with project deletion even if some tasks fail to delete', async () => {
+      // Mock project exists
+      databaseService.queryOne.mockReturnValue(mockProject);
+
+      const mockTasks = [
+        { id: 'task-1', name: 'Task 1', status: 'planning' },
+        { id: 'task-2', name: 'Task 2', status: 'doing' },
+      ];
+
+      const mockTaskManager = {
+        getTasksByProject: vi.fn().mockResolvedValue(mockTasks),
+        deleteTask: vi
+          .fn()
+          .mockResolvedValueOnce(true) // First task succeeds
+          .mockResolvedValueOnce(false), // Second task fails
+      };
+
+      vi.doMock('../task.js', () => ({ default: mockTaskManager }));
+
+      databaseService.delete.mockReturnValue({ changes: 1 });
+
+      const result = await projectManager.deleteProject('project-1');
+
+      expect(result).toBe(true); // Should still succeed
+      expect(mockTaskManager.deleteTask).toHaveBeenCalledTimes(2);
+    });
+
+    it('should validate project deletion returns proper reason for non-existent projects', async () => {
+      databaseService.queryOne.mockReturnValue(null);
+
+      const result = await projectManager.validateProjectDeletion('non-existent');
+
+      expect(result.canDelete).toBe(false);
+      expect(result.reason).toBe('Project not found');
+    });
+  });
 });

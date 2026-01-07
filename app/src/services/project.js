@@ -6,6 +6,7 @@
 import databaseService from './database.js';
 import Project from '../models/Project.js';
 import logger from '../../electron-main/logger.js';
+import { parseSqliteError, createValidationError, createNotFoundError } from '../utils/sqliteErrorHandler.js';
 
 class ProjectManager {
   /**
@@ -17,7 +18,8 @@ class ProjectManager {
       const projects = databaseService.query('SELECT * FROM projects ORDER BY created_at DESC');
       return projects.map((project) => Project.fromDatabase(project));
     } catch (error) {
-      logger.error('Error getting projects:', error);
+      const errorInfo = parseSqliteError(error, 'Get all projects');
+      logger.logError(error, errorInfo.developerMessage);
       return [];
     }
   }
@@ -32,7 +34,8 @@ class ProjectManager {
       const project = databaseService.queryOne('SELECT * FROM projects WHERE id = ?', [id]);
       return project ? Project.fromDatabase(project) : null;
     } catch (error) {
-      logger.error(`Error getting project ${id}:`, error);
+      const errorInfo = parseSqliteError(error, 'Get project by ID', { projectId: id });
+      logger.logError(error, errorInfo.developerMessage);
       return null;
     }
   }
@@ -45,7 +48,11 @@ class ProjectManager {
   async addProject(project) {
     try {
       if (!project.validate()) {
-        logger.error('Invalid project data', project.name);
+        const errorInfo = createValidationError(
+          'Add project',
+          `Invalid project data: project name "${project.name}" is invalid`
+        );
+        logger.error(errorInfo.developerMessage);
         return false;
       }
 
@@ -57,7 +64,17 @@ class ProjectManager {
 
       return result && result.changes > 0;
     } catch (error) {
-      logger.error('Error adding project:', error);
+      const errorInfo = parseSqliteError(error, 'Add project', {
+        projectId: project.id,
+        projectName: project.name
+      });
+      logger.logError(error, errorInfo.developerMessage);
+
+      // Special handling for constraint violations
+      if (error.code === 'SQLITE_CONSTRAINT' || error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        logger.warn(`Project with ID ${project.id} or name "${project.name}" already exists`);
+      }
+
       return false;
     }
   }
@@ -70,7 +87,11 @@ class ProjectManager {
   async updateProject(project) {
     try {
       if (!project.validate()) {
-        logger.error('Invalid project data');
+        const errorInfo = createValidationError(
+          'Update project',
+          `Invalid project data: project name "${project.name}" is invalid`
+        );
+        logger.error(errorInfo.developerMessage);
         return false;
       }
 
@@ -80,9 +101,17 @@ class ProjectManager {
         [data.name, data.description, data.updated_at, data.id]
       );
 
+      if (!result || result.changes === 0) {
+        logger.warn(`Project ${project.id} not found for update or no changes made`);
+      }
+
       return result && result.changes > 0;
     } catch (error) {
-      logger.error(`Error updating project ${project.id}:`, error);
+      const errorInfo = parseSqliteError(error, 'Update project', {
+        projectId: project.id,
+        projectName: project.name
+      });
+      logger.logError(error, errorInfo.developerMessage);
       return false;
     }
   }
@@ -96,9 +125,11 @@ class ProjectManager {
     try {
       const project = await this.getProjectById(id);
       if (!project) {
+        const errorInfo = createNotFoundError('Validate project deletion', 'Project', id);
+        logger.warn(errorInfo.developerMessage);
         return {
           canDelete: false,
-          reason: 'Project not found',
+          reason: errorInfo.userMessage,
           details: null,
         };
       }
@@ -125,7 +156,8 @@ class ProjectManager {
         },
       };
     } catch (error) {
-      logger.error(`Error validating project deletion for ${id}:`, error);
+      const errorInfo = parseSqliteError(error, 'Validate project deletion', { projectId: id });
+      logger.logError(error, errorInfo.developerMessage);
       return {
         canDelete: false,
         reason: 'Error during validation',
@@ -146,7 +178,7 @@ class ProjectManager {
       if (!force) {
         const validation = await this.validateProjectDeletion(id);
         if (!validation.canDelete) {
-          logger.error(`Cannot delete project ${id}: ${validation.reason}`);
+          logger.warn(`Cannot delete project ${id}: ${validation.reason}`);
           return false;
         }
 
@@ -164,7 +196,8 @@ class ProjectManager {
       // Get project and tasks for deletion
       const project = await this.getProjectById(id);
       if (!project) {
-        logger.error(`Project ${id} not found for deletion`);
+        const errorInfo = createNotFoundError('Delete project', 'Project', id);
+        logger.error(errorInfo.developerMessage);
         return false;
       }
 
@@ -176,16 +209,24 @@ class ProjectManager {
       // Delete all tasks and their associated data
       // This will handle notifications, recurrence rules, and other task-related cleanup
       let deletedTasksCount = 0;
+      let failedTasks = [];
       for (const task of projectTasks) {
         try {
           const taskDeleted = await taskManager.deleteTask(task.id);
           if (taskDeleted) {
             deletedTasksCount++;
           } else {
+            failedTasks.push(task.id);
             logger.warn(`Failed to delete task ${task.id} for project ${id}`);
           }
         } catch (taskError) {
-          logger.error(`Error deleting task ${task.id} for project ${id}:`, taskError);
+          failedTasks.push(task.id);
+          const taskErrorInfo = parseSqliteError(
+            taskError,
+            'Delete task during project deletion',
+            { projectId: id, taskId: task.id }
+          );
+          logger.logError(taskError, taskErrorInfo.developerMessage);
           // Continue with other tasks even if one fails
         }
       }
@@ -197,13 +238,17 @@ class ProjectManager {
         logger.info(
           `Successfully deleted project ${id} and ${deletedTasksCount}/${projectTasks.length} associated tasks`
         );
+        if (failedTasks.length > 0) {
+          logger.warn(`Failed to delete ${failedTasks.length} tasks: ${failedTasks.join(', ')}`);
+        }
         return true;
       } else {
         logger.error(`Failed to delete project ${id} from database`);
         return false;
       }
     } catch (error) {
-      logger.error(`Error deleting project ${id}:`, error);
+      const errorInfo = parseSqliteError(error, 'Delete project', { projectId: id });
+      logger.logError(error, errorInfo.developerMessage);
       return false;
     }
   }
@@ -217,7 +262,8 @@ class ProjectManager {
       const result = databaseService.queryOne('SELECT COUNT(*) as count FROM projects');
       return result ? result.count : 0;
     } catch (error) {
-      logger.error('Error getting project count:', error);
+      const errorInfo = parseSqliteError(error, 'Get project count');
+      logger.logError(error, errorInfo.developerMessage);
       return 0;
     }
   }
@@ -235,7 +281,8 @@ class ProjectManager {
       );
       return projects.map((project) => Project.fromDatabase(project));
     } catch (error) {
-      logger.error('Error searching projects:', error);
+      const errorInfo = parseSqliteError(error, 'Search projects', { searchQuery: query });
+      logger.logError(error, errorInfo.developerMessage);
       return [];
     }
   }
