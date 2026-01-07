@@ -1,3 +1,4 @@
+<!-- Project task list with filtering, editing, and notification count integration. -->
 <template>
   <div class="project-task-list">
     <!-- Task Filter -->
@@ -124,9 +125,6 @@ export default {
       search: '',
     });
 
-    // Track notification counts for each task
-    const taskNotificationCounts = ref({});
-
     // Get tasks for the selected project
     const tasks = computed(() => {
       if (!props.selectedProject) return [];
@@ -239,23 +237,8 @@ export default {
       return editingTask.value && task && editingTask.value.id === task.id;
     };
 
-    // Function to fetch notification counts for all tasks
-    const fetchNotificationCounts = async () => {
-      if (!tasks.value || tasks.value.length === 0) return;
-
-      const counts = {};
-      for (const task of tasks.value) {
-        try {
-          const notifications = await window.electron.getNotificationsByTask(task.id);
-          // Exclude planned time notifications from the count shown in UI
-          const regularNotifications = notifications.filter((n) => n.type !== 'PLANNED_TIME');
-          counts[task.id] = regularNotifications ? regularNotifications.length : 0;
-        } catch (error) {
-          logger.error(`Error fetching notifications for task ${task.id}:`, error);
-          counts[task.id] = 0;
-        }
-      }
-      taskNotificationCounts.value = counts;
+    const refreshNotificationCounts = async () => {
+      await store.dispatch('notifications/refreshNotificationCounts');
     };
 
     // Function to fetch tasks for the current project
@@ -269,8 +252,7 @@ export default {
           await store.dispatch('recurrence/fetchRecurrenceRulesForTasks', taskIds);
         }
 
-        // Fetch notification counts for all tasks
-        await fetchNotificationCounts();
+        await refreshNotificationCounts();
       }
     };
 
@@ -280,8 +262,7 @@ export default {
 
       if (props.selectedProject) {
         await store.dispatch('tasks/fetchAllTasksByProject', props.selectedProject.id);
-        // Fetch notification counts for all tasks
-        await fetchNotificationCounts();
+        await refreshNotificationCounts();
       }
     };
 
@@ -325,7 +306,7 @@ export default {
             'notifications:refresh',
             async () => {
               logger.info('Received notifications:refresh event');
-              await fetchTasks();
+              await refreshNotificationCounts();
             }
           );
 
@@ -334,8 +315,11 @@ export default {
             'notifications:changed',
             async (taskId) => {
               logger.info(`Received notifications:changed event for task ${taskId}`);
-              // Refresh notification counts for all tasks to keep UI in sync
-              await fetchNotificationCounts();
+              if (taskId) {
+                await store.dispatch('notifications/fetchNotificationsByTask', taskId);
+              } else {
+                await refreshNotificationCounts();
+              }
             }
           );
         } else {
@@ -385,8 +369,7 @@ export default {
         showingAllTasks.value = false;
         if (newProject) {
           await store.dispatch('tasks/fetchTasksByProject', { projectId: newProject.id });
-          // Fetch notification counts for all tasks
-          await fetchNotificationCounts();
+          await refreshNotificationCounts();
         }
       },
       { immediate: true }
@@ -468,7 +451,7 @@ export default {
 
     // Helper function to get notification count for a specific task
     const getNotificationCount = (taskId) => {
-      return taskNotificationCounts.value[taskId] || 0;
+      return store.getters['notifications/notificationCount'](taskId);
     };
 
     return {

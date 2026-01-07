@@ -54,9 +54,6 @@ export default {
     const isLoading = computed(() => store.getters['tasks/isLoading']);
     const error = computed(() => store.getters['tasks/error']);
 
-    // Track notification counts for each task
-    const taskNotificationCounts = ref({});
-
     // Get working hours from preferences
     const workingHours = computed(
       () =>
@@ -206,25 +203,6 @@ export default {
       return now > plannedDateTime;
     };
 
-    // Function to fetch notification counts for all tasks
-    const fetchNotificationCounts = async () => {
-      if (!tasks.value || tasks.value.length === 0) return;
-
-      const counts = {};
-      for (const task of tasks.value) {
-        try {
-          const notifications = await window.electron.getNotificationsByTask(task.id);
-          // Exclude planned time notifications from the count shown in UI
-          const regularNotifications = notifications.filter((n) => n.type !== 'PLANNED_TIME');
-          counts[task.id] = regularNotifications ? regularNotifications.length : 0;
-        } catch (error) {
-          logger.error(`Error fetching notifications for task ${task.id}:`, error);
-          counts[task.id] = 0;
-        }
-      }
-      taskNotificationCounts.value = counts;
-    };
-
     // Function to fetch tasks
     const fetchTasks = async () => {
       await store.dispatch('tasks/fetchTasks');
@@ -235,10 +213,14 @@ export default {
         await store.dispatch('recurrence/fetchRecurrenceRulesForTasks', taskIds);
       }
 
-      // Fetch notification counts for all tasks
-      await fetchNotificationCounts();
+      // Fetch notification counts for all tasks using store
+      await store.dispatch('notifications/refreshNotificationCounts');
 
       emit('tasks-updated', tasks.value);
+    };
+
+    const refreshNotificationCounts = async () => {
+      await store.dispatch('notifications/refreshNotificationCounts');
     };
 
     // Function to load all tasks including those completed a long time ago
@@ -246,8 +228,8 @@ export default {
       try {
         showingAllTasks.value = true;
         await store.dispatch('tasks/fetchAllTasks');
-        // Fetch notification counts for all tasks
-        await fetchNotificationCounts();
+        // Fetch notification counts for all tasks using store
+        await refreshNotificationCounts();
         emit('tasks-updated', tasks.value);
       } catch (error) {
         logger.error('Error loading all tasks:', error);
@@ -294,7 +276,7 @@ export default {
             'notifications:refresh',
             async () => {
               logger.info('Received notifications:refresh event');
-              await fetchTasks();
+              await refreshNotificationCounts();
             }
           );
 
@@ -303,8 +285,11 @@ export default {
             'notifications:changed',
             async (taskId) => {
               logger.info(`Received notifications:changed event for task ${taskId}`);
-              // Refresh notification counts for all tasks to keep UI in sync
-              await fetchNotificationCounts();
+              if (taskId) {
+                await store.dispatch('notifications/fetchNotificationsByTask', taskId);
+              } else {
+                await refreshNotificationCounts();
+              }
             }
           );
         } else {
@@ -360,8 +345,8 @@ export default {
 
         // Refresh all tasks for smart projects
         await store.dispatch('tasks/fetchTasks');
-        // Fetch notification counts for all tasks
-        await fetchNotificationCounts();
+        // Fetch notification counts for all tasks using store
+        await store.dispatch('notifications/refreshNotificationCounts');
         emit('tasks-updated', tasks.value);
       } catch (error) {
         logger.error('Error updating task status:', error);
@@ -382,8 +367,8 @@ export default {
         // Refresh all tasks for smart projects
         logger.info('Refreshing tasks for smart project');
         await store.dispatch('tasks/fetchTasks');
-        // Fetch notification counts for all tasks
-        await fetchNotificationCounts();
+        // Fetch notification counts for all tasks using store
+        await store.dispatch('notifications/refreshNotificationCounts');
         emit('tasks-updated', tasks.value);
       } catch (error) {
         logger.error('Error updating task:', error);
@@ -400,8 +385,8 @@ export default {
 
           // Refresh all tasks for smart projects
           await store.dispatch('tasks/fetchTasks');
-          // Fetch notification counts for all tasks
-          await fetchNotificationCounts();
+          // Fetch notification counts for all tasks using store
+          await store.dispatch('notifications/refreshNotificationCounts');
           emit('tasks-updated', tasks.value);
         }
       } catch (error) {
@@ -416,8 +401,8 @@ export default {
 
         // Refresh all tasks for smart projects
         await store.dispatch('tasks/fetchTasks');
-        // Fetch notification counts for all tasks
-        await fetchNotificationCounts();
+        // Fetch notification counts for all tasks using store
+        await store.dispatch('notifications/refreshNotificationCounts');
         emit('tasks-updated', tasks.value);
 
         logger.info(`Task ${task.id} moved to project ${task.projectId}`);
@@ -428,7 +413,7 @@ export default {
 
     // Helper function to get notification count for a specific task
     const getNotificationCount = (taskId) => {
-      return taskNotificationCounts.value[taskId] || 0;
+      return store.getters['notifications/notificationCount'](taskId);
     };
 
     // Function to check if a task is currently being edited

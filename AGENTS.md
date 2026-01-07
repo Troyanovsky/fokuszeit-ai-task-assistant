@@ -86,6 +86,7 @@ Modular store structure with actions triggering IPC calls:
 - `store/modules/ai.js` - Chat history
 - `store/modules/preferences.js` - User settings
 - `store/modules/recurrence.js` - Recurrence state
+- `store/modules/notifications.js` - Notification state management
 
 **Known inefficiency**: Stores refetch entire lists after CRUD operations. Consider optimistic updates or targeted fetches for performance.
 
@@ -159,6 +160,51 @@ ipcMain.handle('channel:name', async (_, data) => {
 1. Add schema to `functionSchemas.js`
 2. Implement handler in `functionHandlers.js`
 3. AI service routes call to handler automatically
+
+### Notification Store Pattern
+
+Centralized Vuex store for notification state management replaces direct IPC state management in components. Uses hybrid IPC + store approach:
+
+**Store usage in components:**
+```javascript
+// Batch refresh for all visible tasks
+await store.dispatch('notifications/refreshNotificationCounts');
+
+// Fetch notifications for specific task
+await store.dispatch('notifications/fetchNotificationsByTask', taskId);
+
+// Get notification count (excludes PLANNED_TIME type from UI display)
+const count = store.getters['notifications/notificationCount'](taskId);
+```
+
+**IPC event flow (main → renderer):**
+- Main process emits: `notifications:changed` (with taskId) or `notifications:refresh`
+- Components listen via `window.electron.receive()` then dispatch to store
+- Store manages local state; IPC only triggers updates
+
+**Example:**
+```javascript
+// In component onMounted
+wrappedNotificationsChangedListener.value = window.electron.receive(
+  'notifications:changed',
+  async (taskId) => {
+    if (taskId) {
+      await store.dispatch('notifications/fetchNotificationsByTask', taskId);
+    } else {
+      await store.dispatch('notifications/refreshNotificationCounts');
+    }
+  }
+);
+
+// In component onBeforeUnmount
+window.electron.removeListener('notifications:changed', wrappedNotificationsChangedListener.value);
+```
+
+**Key features:**
+- Excludes PLANNED_TIME type from UI notification counts
+- Clears stale notifications on fetch errors
+- Indexed by taskId for efficient lookups
+- Properly cleans up IPC listeners on component unmount
 
 ## Logging
 

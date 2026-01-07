@@ -6,6 +6,7 @@ import tasks from './modules/tasks';
 import ai from './modules/ai';
 import preferences from './modules/preferences';
 import recurrence from './modules/recurrence';
+import notifications from './modules/notifications';
 
 export default createStore({
   modules: {
@@ -14,5 +15,6 @@ export default createStore({
     ai,
     preferences,
     recurrence,
+    notifications,
   },
 });

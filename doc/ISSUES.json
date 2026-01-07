@@ -13,7 +13,7 @@
         "Maintain existing notification functionality during transition",
         "Add tests for notification store mutations and actions"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "TASK-250627-002",
