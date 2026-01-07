@@ -28,7 +28,7 @@ npm run lint             # ESLint with auto-fix
 npm run format           # Prettier formatting
 ```
 
-**Always run `npm run test` and `npm run electron:dev` at the end of your work to verify changes.**
+**Always run `npm run test` (agent can run) and `npm run electron:dev` (long-running UI process, ask user to run manually) at the end of your work to verify changes.**
 
 ## Architecture Overview
 

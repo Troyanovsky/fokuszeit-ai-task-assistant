@@ -28,7 +28,8 @@
         "Refactor code to use the consistent pattern throughout",
         "Remove or update the unused pattern documentation"
       ],
-      "passes": false
+      "passes": true,
+      "resolution": "Removed unused 'api' object, extracted VALID_IPC_CHANNELS constant, confirmed window.electron.* pattern is documented in AGENTS.md"
     },
     {
       "id": "STORY-250627-003",

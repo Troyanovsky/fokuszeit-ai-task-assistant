@@ -1,3 +1,9 @@
+/**
+ * Electron preload bridge.
+ *
+ * Exposes a minimal, whitelisted IPC API to the renderer via `contextBridge`,
+ * keeping IPC access explicit and constrained under context isolation.
+ */
 const { contextBridge, ipcRenderer } = require('electron');
 
 let electronLog;
@@ -22,26 +28,17 @@ try {
   electronLog.warn('electron-log not available, using console fallback', error);
 }
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld(
-  'api', {
-    send: (channel, data) => {
-      // whitelist channels
-      let validChannels = ['toMain'];
-      if (validChannels.includes(channel)) {
-        ipcRenderer.send(channel, data);
-      }
-    },
-    receive: (channel, func) => {
-      let validChannels = ['fromMain'];
-      if (validChannels.includes(channel)) {
-        // Deliberately strip event as it includes `sender` 
-        ipcRenderer.on(channel, (event, ...args) => func(...args));
-      }
-    }
-  }
-);
+const VALID_IPC_CHANNELS = [
+  'projects:refresh',
+  'tasks:refresh',
+  'ai:chatHistoryUpdate',
+  'notification:received',
+  'notifications:changed',
+  'notifications:refresh',
+  'preferences:refresh',
+  'recurrence:changed',
+  'task:recurring-created'
+];
 
 // Expose logger to renderer process
 contextBridge.exposeInMainWorld(
@@ -106,18 +103,7 @@ contextBridge.exposeInMainWorld(
     
     // Event handling
     receive: (channel, func) => {
-      const validChannels = [
-        'projects:refresh',
-        'tasks:refresh',
-        'ai:chatHistoryUpdate',
-        'notification:received',
-        'notifications:changed',
-        'notifications:refresh',
-        'preferences:refresh',
-        'recurrence:changed',
-        'task:recurring-created'
-      ];
-      if (validChannels.includes(channel)) {
+      if (VALID_IPC_CHANNELS.includes(channel)) {
         // Create a wrapper function that we can reference for removal
         const wrappedFunc = (event, ...args) => func(...args);
         ipcRenderer.on(channel, wrappedFunc);
@@ -126,34 +112,12 @@ contextBridge.exposeInMainWorld(
       }
     },
     removeListener: (channel, func) => {
-      const validChannels = [
-        'projects:refresh',
-        'tasks:refresh',
-        'ai:chatHistoryUpdate',
-        'notification:received',
-        'notifications:changed',
-        'notifications:refresh',
-        'preferences:refresh',
-        'recurrence:changed',
-        'task:recurring-created'
-      ];
-      if (validChannels.includes(channel) && func) {
+      if (VALID_IPC_CHANNELS.includes(channel) && func) {
         ipcRenderer.removeListener(channel, func);
       }
     },
     removeAllListeners: (channel) => {
-      const validChannels = [
-        'projects:refresh',
-        'tasks:refresh',
-        'ai:chatHistoryUpdate',
-        'notification:received',
-        'notifications:changed',
-        'notifications:refresh',
-        'preferences:refresh',
-        'recurrence:changed',
-        'task:recurring-created'
-      ];
-      if (validChannels.includes(channel)) {
+      if (VALID_IPC_CHANNELS.includes(channel)) {
         ipcRenderer.removeAllListeners(channel);
       }
     }
