@@ -1,37 +1,6 @@
 {
   "issues": [
     {
-      "id": "CHANGE-250627-001",
-      "type": "change",
-      "epic": "Notifications",
-      "title": "Implement Vuex store for notification state management",
-      "description": "Current notification handling uses direct IPC communication and event-based updates. While it supports simple notification functionality, it would benefit from a centralized Vuex store for more complex notification state management, consistency, and easier state access across components.",
-      "acceptance_criteria": [
-        "Create a Vuex store module for notifications (store/modules/notifications.js)",
-        "Move notification state management from event-based to store-based approach",
-        "Ensure all notification components use the store instead of direct IPC events",
-        "Maintain existing notification functionality during transition",
-        "Add tests for notification store mutations and actions"
-      ],
-      "passes": true
-    },
-    {
-      "id": "TASK-250627-002",
-      "type": "task",
-      "epic": "IPC Architecture",
-      "title": "Consolidate and clarify IPC communication patterns",
-      "description": "The preload script exposes two communication objects: 'api' (generic send/receive with whitelisted channels) and 'electron' (large number of direct invokers and specific event listeners). The 'electron' object is the predominant pattern, while 'api' appears underutilized or from an older pattern. This creates confusion about which pattern to use.",
-      "acceptance_criteria": [
-        "Audit all IPC communication patterns in the codebase",
-        "Decide on a single, consistent IPC pattern for the application",
-        "Document the chosen pattern in AGENTS.md or developer documentation",
-        "Refactor code to use the consistent pattern throughout",
-        "Remove or update the unused pattern documentation"
-      ],
-      "passes": true,
-      "resolution": "Removed unused 'api' object, extracted VALID_IPC_CHANNELS constant, confirmed window.electron.* pattern is documented in AGENTS.md"
-    },
-    {
       "id": "STORY-250627-003",
       "type": "story",
       "epic": "Notifications",
@@ -63,73 +32,6 @@
       "passes": false
     },
     {
-      "id": "BUG-250627-007",
-      "type": "bug",
-      "epic": "Notifications",
-      "title": "Handle notification scheduling edge cases",
-      "description": "The notification scheduling mechanism needs to handle edge cases gracefully: system clock changes (backward/forward), app restarts/crashes, and system sleep/wake cycles.",
-      "acceptance_criteria": [
-        "Implement clock change detection and notification rescheduling",
-        "Persist scheduled notifications and restore on app startup",
-        "Handle system sleep/wake events for pending notifications",
-        "Add tests for edge case scenarios",
-        "Log notification scheduling events for debugging"
-      ],
-      "passes": true,
-      "resolution": "Added database sent_at tracking column, powerMonitor for sleep/wake, periodic clock monitoring, idempotent notification sending, and comprehensive edge case tests."
-    },
-    {
-      "id": "TASK-250627-008",
-      "type": "task",
-      "epic": "Projects",
-      "title": "Improve error handling in project service",
-      "description": "The project service (app/src/services/project.js) needs more specific error handling for database operations to provide better debugging information and user feedback.",
-      "acceptance_criteria": [
-        "Add try-catch blocks for all database operations",
-        "Provide specific error messages for different failure types",
-        "Log errors with sufficient context for debugging",
-        "Return user-friendly error messages to the UI",
-        "Add error handling tests"
-      ],
-      "passes": true
-    },
-    {
-      "id": "TASK-250627-009",
-      "type": "task",
-      "epic": "Tasks",
-      "title": "Complete model-level data validation in Task model",
-      "description": "The Task model's validate() method (app/src/models/Task.js) needs completion to ensure data integrity. While function handlers already validate AI inputs, model-level validation is needed for direct service usage and API integrity. Date/time utilities and format specification (doc/DATE_TIME_FORMATS.md) already exist.",
-      "acceptance_criteria": [
-        "Add date range validation to Task.validate(): dueDate must be >= createdAt",
-        "Add date range validation to Task.validate(): plannedTime must be >= createdAt",
-        "Add duration validation to Task.validate(): duration must be > 0",
-        "Add dueDate format validation to Task.validate(): must be valid YYYY-MM-DD or null",
-        "Add plannedTime format validation to Task.validate(): must be valid ISO 8601 or null",
-        "Add labels validation to Task.validate(): if present, must be array of strings",
-        "Add dependencies validation to Task.validate(): if present, must be array of task IDs",
-        "Add unit tests for Task.validate() covering all validation rules",
-        "Document validation rules in Task.js file-level documentation",
-        "Ensure validation errors are specific and actionable"
-      ],
-      "passes": true,
-      "resolution": "Implemented comprehensive validation in Task.validate() with logger.error() for specific error messages. Added 43+ unit tests covering all validation rules. Updated file-level documentation to describe all validation requirements."
-    },
-    {
-      "id": "BUG-250627-010",
-      "type": "bug",
-      "epic": "Tasks",
-      "title": "Prevent circular dependencies in task and notification services",
-      "description": "There's a potential for circular dependencies between task.js and notification.js when deleting tasks and associated notifications. This needs to be resolved to prevent runtime errors.",
-      "acceptance_criteria": [
-        "Analyze and document the dependency chain between services",
-        "Refactor to eliminate circular dependencies",
-        "Ensure task deletion properly cleans up notifications without circular calls",
-        "Add tests to prevent regression of circular dependencies",
-        "Document the proper pattern for cross-service operations"
-      ],
-      "passes": false
-    },
-    {
       "id": "TASK-250627-011",
       "type": "task",
       "epic": "Architecture",
@@ -143,7 +45,15 @@
         "Add tests for main process service layer",
         "Update AGENTS.md with clear separation guidance"
       ],
-      "passes": false
+      "passes": false,
+      "breakdown": [
+        "Inventory main-process imports from app/src and document usage",
+        "Define and document process boundaries and shared layer rules",
+        "Extract shared models/utils into app/shared and update imports",
+        "Move DB-backed services to app/electron-main/services; renderer uses IPC only",
+        "Add tests for main service layer and update AGENTS.md"
+      ],
+      "notes": "Sequence: establish shared layer before functionHandlers and IPC refactors."
     },
     {
       "id": "TASK-250627-015",
@@ -160,23 +70,14 @@
         "Add tests for each extracted module",
         "Update AGENTS.md with new structure"
       ],
-      "passes": false
-    },
-    {
-      "id": "TASK-250627-018",
-      "type": "task",
-      "epic": "Code Quality",
-      "title": "Extend lint coverage to test files",
-      "description": "ISSUE RESOLVED: Investigation confirmed test files ARE being linted. eslint.config.js never ignored **/*.test.js - they have explicit configuration with Vitest globals and relaxed complexity rules. All 15 test files pass linting.",
-      "acceptance_criteria": [
-        "Remove or adjust **/*.test.js exclusion from eslint.config.js",
-        "Run ESLint on test files and fix existing issues",
-        "Add test-specific lint rules if needed (e.g., for test globals)",
-        "Ensure npm run lint checks all JavaScript files",
-        "Add lint test to CI pipeline"
-      ],
-      "passes": true,
-      "resolution": "All criteria met: test files have explicit ESLint config with Vitest globals, no exclusion exists, and npm run lint checks all files including tests."
+      "passes": false,
+      "breakdown": [
+        "Extract argument parsing and validation into dedicated modules",
+        "Extract response formatting utilities (tasks/recurrence/notifications)",
+        "Reduce functionHandlers to orchestration and dispatch only",
+        "Add unit tests for each extracted module",
+        "Update AGENTS.md with the new module structure"
+      ]
     },
     {
       "id": "STORY-250627-019",
@@ -193,7 +94,9 @@
         "Test error handling across process boundaries",
         "Add E2E tests to CI pipeline"
       ],
-      "passes": false
+      "passes": false,
+      "notes": "Automated E2E frameworks (e.g., Playwright/Spectron) are deprioritized; use manual smoke checks until revisited.",
+      "deprioritized": true
     },
     {
       "id": "TASK-260105-021",
@@ -207,7 +110,14 @@
         "Keep file-level documentation up to date after refactor",
         "Resolve the max-lines-per-function lint warning"
       ],
-      "passes": false
+      "passes": false,
+      "breakdown": [
+        "Create domain-specific IPC registration modules (projects, tasks, notifications, ai)",
+        "Wire setupIpcHandlers to call the new registrars",
+        "Preserve handler behavior and event emissions",
+        "Update file-level documentation to reflect new structure",
+        "Resolve max-lines-per-function lint warning"
+      ]
     },
     {
       "id": "TASK-260105-022",
@@ -227,13 +137,19 @@
       "id": "TASK-260105-024",
       "type": "task",
       "epic": "Models",
-      "title": "Simplify Task and RecurrenceRule constructors",
-      "description": "Task and RecurrenceRule constructors exceed ESLint complexity limits, suggesting that validation/normalization logic should be extracted for clarity.",
+      "title": "Reduce Task and RecurrenceRule model complexity",
+      "description": "Task.validate() (complexity 31 at line 119), Task constructor (complexity 16 at line 44), and RecurrenceRule constructor (complexity 12 at line 20) exceed ESLint limits (max 10). The Task.validate() complexity increased significantly after TASK-250627-009 added comprehensive validation logic. Extract validation logic into helper functions or a dedicated validation schema module.",
       "acceptance_criteria": [
-        "Extract validation/normalization logic into helper functions",
-        "Keep model behavior and data mappings unchanged",
-        "Resolve constructor complexity warnings",
-        "Document non-obvious validation rules"
+        "Reduce Task.validate() complexity from 31 to \u226410 (app/src/models/Task.js:119)",
+        "Reduce Task constructor complexity from 16 to \u226410 (app/src/models/Task.js:44)",
+        "Reduce RecurrenceRule constructor complexity from 12 to \u226410 (app/src/models/RecurrenceRule.js:20)",
+        "Extract validation logic into helper functions or app/src/models/validators/ module",
+        "Keep all validation behavior and test coverage unchanged (all 369 tests must pass)",
+        "Update AGENTS.md with validation pattern if new module structure is created"
+      ],
+      "files": [
+        "app/src/models/Task.js",
+        "app/src/models/RecurrenceRule.js"
       ],
       "passes": false
     },
