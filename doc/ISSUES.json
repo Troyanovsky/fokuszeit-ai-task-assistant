@@ -112,7 +112,7 @@
         "Keep file-level documentation up to date after refactor",
         "Resolve the max-lines-per-function lint warning"
       ],
-      "passes": false,
+      "passes": true,
       "breakdown": [
         "Create domain-specific IPC registration modules (projects, tasks, notifications, ai)",
         "Wire setupIpcHandlers to call the new registrars",
@@ -120,7 +120,7 @@
         "Update file-level documentation to reflect new structure",
         "Resolve max-lines-per-function lint warning"
       ],
-      "notes": "Do after TASK-250627-011."
+      "notes": "Do after TASK-250627-011. COMPLETED: Split setupIpcHandlers (368 lines) into domain-specific modules (ipc/projectIpc.js, ipc/taskCrudIpc.js, ipc/taskSchedulingIpc.js, ipc/notificationIpc.js, ipc/recurrenceIpc.js, ipc/preferencesIpc.js, ipc/aiIpc.js). Main ipcHandlers.js now 48 lines. All 369 tests pass."
     },
     {
       "id": "TASK-260105-022",
