@@ -1,9 +1,26 @@
 /**
  * Task Model
+ *
+ * Responsibility:
+ * - Represent a task entity with properties for scheduling, dependencies, and metadata
+ * - Validate task data before database operations
+ * - Transform between application (camelCase) and database (snake_case) formats
+ *
+ * Validation Rules:
+ * - name: Non-empty string required
+ * - projectId: Non-empty string required
+ * - status: Must be one of STATUS.PLANNING, STATUS.DOING, STATUS.DONE
+ * - priority: Must be one of PRIORITY.LOW, PRIORITY.MEDIUM, PRIORITY.HIGH
+ * - dueDate: If present, must be valid YYYY-MM-DD format and >= createdAt (local calendar)
+ * - plannedTime: If present, must be valid ISO 8601 timestamp and >= createdAt (UTC)
+ * - duration: If present, must be > 0 (minutes)
+ * - labels: If present, must be array of strings
+ * - dependencies: If present, must be array of task IDs (strings)
  */
 
 import { v4 as uuidv4 } from 'uuid';
 import { coerceDateOnly } from '../utils/dateTime.js';
+import logger from '../services/logger.js';
 
 // Task status constants
 export const STATUS = {
@@ -100,18 +117,112 @@ class Task {
    * @returns {boolean} - Validation result
    */
   validate() {
+    // Existing validation: name
     if (!this.name || this.name.trim() === '') {
+      logger.error('Task validation failed: name is required');
       return false;
     }
+
+    // Existing validation: projectId
     if (!this.projectId) {
+      logger.error('Task validation failed: projectId is required');
       return false;
     }
+
+    // Existing validation: status
     if (!Object.values(STATUS).includes(this.status)) {
+      logger.error(`Task validation failed: invalid status "${this.status}"`);
       return false;
     }
+
+    // Existing validation: priority
     if (!Object.values(PRIORITY).includes(this.priority)) {
+      logger.error(`Task validation failed: invalid priority "${this.priority}"`);
       return false;
     }
+
+    // NEW: dueDate format validation (YYYY-MM-DD or null)
+    if (this.dueDate !== null) {
+      if (typeof this.dueDate !== 'string') {
+        logger.error(`Task validation failed: dueDate must be YYYY-MM-DD string or null, got ${typeof this.dueDate}`);
+        return false;
+      }
+      const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+      if (!datePattern.test(this.dueDate)) {
+        logger.error(`Task validation failed: dueDate must be YYYY-MM-DD format, got "${this.dueDate}"`);
+        return false;
+      }
+    }
+
+    // NEW: plannedTime format validation (ISO 8601 Date object or null)
+    if (this.plannedTime !== null) {
+      if (!(this.plannedTime instanceof Date)) {
+        logger.error(`Task validation failed: plannedTime must be Date object or null, got ${typeof this.plannedTime}`);
+        return false;
+      }
+      if (isNaN(this.plannedTime.getTime())) {
+        logger.error(`Task validation failed: plannedTime is invalid Date object`);
+        return false;
+      }
+    }
+
+    // NEW: duration validation (must be > 0 if present)
+    if (this.duration !== null && this.duration !== undefined) {
+      if (typeof this.duration !== 'number') {
+        logger.error(`Task validation failed: duration must be number or null, got ${typeof this.duration}`);
+        return false;
+      }
+      if (this.duration <= 0) {
+        logger.error(`Task validation failed: duration must be > 0, got ${this.duration}`);
+        return false;
+      }
+    }
+
+    // NEW: labels validation (array of strings or empty array)
+    if (this.labels !== null && this.labels !== undefined) {
+      if (!Array.isArray(this.labels)) {
+        logger.error(`Task validation failed: labels must be array, got ${typeof this.labels}`);
+        return false;
+      }
+      for (const label of this.labels) {
+        if (typeof label !== 'string') {
+          logger.error(`Task validation failed: labels must contain only strings, found ${typeof label}`);
+          return false;
+        }
+      }
+    }
+
+    // NEW: dependencies validation (array of task IDs or empty array)
+    if (this.dependencies !== null && this.dependencies !== undefined) {
+      if (!Array.isArray(this.dependencies)) {
+        logger.error(`Task validation failed: dependencies must be array, got ${typeof this.dependencies}`);
+        return false;
+      }
+      for (const depId of this.dependencies) {
+        if (typeof depId !== 'string') {
+          logger.error(`Task validation failed: dependencies must contain only strings (task IDs), found ${typeof depId}`);
+          return false;
+        }
+      }
+    }
+
+    // NEW: dueDate range validation (must be >= createdAt as local calendar dates)
+    if (this.dueDate !== null) {
+      const createdAtDateOnly = coerceDateOnly(this.createdAt);
+      if (createdAtDateOnly && this.dueDate < createdAtDateOnly) {
+        logger.error(`Task validation failed: dueDate "${this.dueDate}" must be >= createdAt "${createdAtDateOnly}"`);
+        return false;
+      }
+    }
+
+    // NEW: plannedTime range validation (must be >= createdAt as timestamps)
+    if (this.plannedTime !== null) {
+      if (this.plannedTime < this.createdAt) {
+        logger.error(`Task validation failed: plannedTime "${this.plannedTime.toISOString()}" must be >= createdAt "${this.createdAt.toISOString()}"`);
+        return false;
+      }
+    }
+
     return true;
   }
 
