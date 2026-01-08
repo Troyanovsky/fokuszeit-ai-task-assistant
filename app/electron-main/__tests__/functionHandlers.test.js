@@ -4,9 +4,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleFunctionCall } from '../functionHandlers.js';
-import recurrenceService from '../../src/services/recurrence.js';
+import recurrenceService from '../services/recurrence.js';
 
-vi.mock('../../src/services/recurrence.js', () => ({
+vi.mock('../services/recurrence.js', () => ({
   default: {
     getRecurrenceRuleByTaskId: vi.fn(),
     updateRecurrenceRule: vi.fn(),

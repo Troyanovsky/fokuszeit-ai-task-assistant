@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import projectManager from '../project.js';
 import databaseService from '../database.js';
-import Project from '../../models/Project.js';
+import Project from '../../../shared/models/Project.js';
 
 // Mock the database service
 vi.mock('../database.js', () => ({
@@ -15,7 +15,7 @@ vi.mock('../database.js', () => ({
 }));
 
 // Mock the Project model
-vi.mock('../../models/Project.js', () => {
+vi.mock('../../../shared/models/Project.js', () => {
   const MockProject = function (data = {}) {
     // Initialize properties
     this.id = data.id || 'mock-id';

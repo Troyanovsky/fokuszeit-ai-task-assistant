@@ -26,7 +26,7 @@
 <script>
 import { computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
-import { FREQUENCY } from '../../models/RecurrenceRule.js';
+import { FREQUENCY } from '../../../shared/models/RecurrenceRule.js';
 import logger from '../../services/logger.js';
 
 export default {

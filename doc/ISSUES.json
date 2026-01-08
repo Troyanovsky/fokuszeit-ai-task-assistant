@@ -53,7 +53,8 @@
         "Move DB-backed services to app/electron-main/services; renderer uses IPC only",
         "Add tests for main service layer and update AGENTS.md"
       ],
-      "notes": "Sequence: establish shared layer before functionHandlers and IPC refactors."
+      "notes": "Sequence: establish shared layer before functionHandlers and IPC refactors. Recommended to do first.",
+      "recommended_sequence": 1
     },
     {
       "id": "TASK-250627-015",
@@ -77,7 +78,8 @@
         "Reduce functionHandlers to orchestration and dispatch only",
         "Add unit tests for each extracted module",
         "Update AGENTS.md with the new module structure"
-      ]
+      ],
+      "notes": "Do after TASK-250627-011."
     },
     {
       "id": "STORY-250627-019",
@@ -117,7 +119,8 @@
         "Preserve handler behavior and event emissions",
         "Update file-level documentation to reflect new structure",
         "Resolve max-lines-per-function lint warning"
-      ]
+      ],
+      "notes": "Do after TASK-250627-011."
     },
     {
       "id": "TASK-260105-022",
@@ -140,16 +143,16 @@
       "title": "Reduce Task and RecurrenceRule model complexity",
       "description": "Task.validate() (complexity 31 at line 119), Task constructor (complexity 16 at line 44), and RecurrenceRule constructor (complexity 12 at line 20) exceed ESLint limits (max 10). The Task.validate() complexity increased significantly after TASK-250627-009 added comprehensive validation logic. Extract validation logic into helper functions or a dedicated validation schema module.",
       "acceptance_criteria": [
-        "Reduce Task.validate() complexity from 31 to \u226410 (app/src/models/Task.js:119)",
-        "Reduce Task constructor complexity from 16 to \u226410 (app/src/models/Task.js:44)",
-        "Reduce RecurrenceRule constructor complexity from 12 to \u226410 (app/src/models/RecurrenceRule.js:20)",
-        "Extract validation logic into helper functions or app/src/models/validators/ module",
+        "Reduce Task.validate() complexity from 31 to \u226410 (app/shared/models/Task.js:119)",
+        "Reduce Task constructor complexity from 16 to \u226410 (app/shared/models/Task.js:44)",
+        "Reduce RecurrenceRule constructor complexity from 12 to \u226410 (app/shared/models/RecurrenceRule.js:20)",
+        "Extract validation logic into helper functions or app/shared/models/validators/ module",
         "Keep all validation behavior and test coverage unchanged (all 369 tests must pass)",
         "Update AGENTS.md with validation pattern if new module structure is created"
       ],
       "files": [
-        "app/src/models/Task.js",
-        "app/src/models/RecurrenceRule.js"
+        "app/shared/models/Task.js",
+        "app/shared/models/RecurrenceRule.js"
       ],
       "passes": false
     },
@@ -158,7 +161,7 @@
       "type": "task",
       "epic": "Projects",
       "title": "Reduce deleteProject complexity in project service",
-      "description": "deleteProject in app/src/services/project.js exceeds ESLint complexity limits, indicating logic that should be decomposed for clarity.",
+      "description": "deleteProject in app/electron-main/services/project.js exceeds ESLint complexity limits, indicating logic that should be decomposed for clarity.",
       "acceptance_criteria": [
         "Extract conditional branches into small helper functions",
         "Keep delete behavior and side effects unchanged",

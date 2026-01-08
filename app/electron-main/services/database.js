@@ -9,7 +9,7 @@ import fs from 'fs';
 import { app } from 'electron';
 import * as initialMigration from '../../database/migrations/initial.js';
 import * as notificationTrackingMigration from '../../database/migrations/002_add_notification_tracking.js';
-import logger from '../../electron-main/logger.js';
+import logger from '../logger.js';
 
 class DatabaseService {
   constructor() {

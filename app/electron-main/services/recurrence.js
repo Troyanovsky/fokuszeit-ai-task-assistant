@@ -4,10 +4,10 @@
  * next occurrence calculations, and task cloning logic
  */
 
-import { RecurrenceRule } from '../models/RecurrenceRule.js';
-import { Task, STATUS } from '../models/Task.js';
+import { RecurrenceRule } from '../../shared/models/RecurrenceRule.js';
+import { Task, STATUS } from '../../shared/models/Task.js';
 import databaseService from './database.js';
-import logger from './logger.js';
+import logger from '../logger.js';
 import { v4 as uuidv4 } from 'uuid';
 
 class RecurrenceService {

@@ -276,7 +276,7 @@ import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useStore } from 'vuex';
 import logger from '../../services/logger.js';
 import RecurrenceIndicator from '../recurrence/RecurrenceIndicator.vue';
-import { endOfDayLocalFromDateOnly, parseDateOnlyLocal } from '../../utils/dateTime.js';
+import { endOfDayLocalFromDateOnly, parseDateOnlyLocal } from '../../../shared/utils/dateTime.js';
 
 export default {
   name: 'TaskItem',

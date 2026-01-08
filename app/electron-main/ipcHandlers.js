@@ -1,10 +1,10 @@
 import { ipcMain } from 'electron';
-import Project from '../src/models/Project.js';
-import projectManager from '../src/services/project.js';
-import taskManager from '../src/services/task.js';
-import notificationService from '../src/services/notification.js';
-import preferencesService from '../src/services/preferences.js';
-import recurrenceService from '../src/services/recurrence.js';
+import Project from '../shared/models/Project.js';
+import projectManager from './services/project.js';
+import taskManager from './services/task.js';
+import notificationService from './services/notification.js';
+import preferencesService from './services/preferences.js';
+import recurrenceService from './services/recurrence.js';
 import logger from './logger.js';
 
 /**

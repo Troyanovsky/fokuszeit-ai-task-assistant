@@ -5,11 +5,11 @@
 import { randomUUID } from 'crypto';
 import axios from 'axios';
 import Store from 'electron-store';
-import projectManager from '../src/services/project.js';
+import projectManager from './services/project.js';
 import logger from './logger.js';
 import { handleFunctionCall } from './functionHandlers.js';
-import { isDebugLoggingEnabled, shouldLogRaw } from '../src/utils/loggingConfig.js';
-import { redactAiRequestPayload, redactAiResponsePayload, redactFunctionCall } from '../src/utils/loggingSanitizers.js';
+import { isDebugLoggingEnabled, shouldLogRaw } from '../shared/utils/loggingConfig.js';
+import { redactAiRequestPayload, redactAiResponsePayload, redactFunctionCall } from '../shared/utils/loggingSanitizers.js';
 
 // Initialize persistent store
 const store = new Store({
@@ -567,7 +567,7 @@ function processAIResponse(aiResponse) {
  */
 async function processWithLLM(userInput, functionResults = null) {
   try {
-    const functionSchemasModule = await import('../src/services/functionSchemas.js');
+    const functionSchemasModule = await import('./services/functionSchemas.js');
     const functionSchemas = functionSchemasModule.default;
     
     const formattedSystemMessage = await prepareSystemMessage();

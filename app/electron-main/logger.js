@@ -49,4 +49,6 @@ const logger = {
   }
 };
 
+globalThis.electronLogger = logger;
+
 export default logger; 

@@ -100,7 +100,7 @@ import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
 import ProjectItem from './ProjectItem.vue';
 import ProjectForm from './ProjectForm.vue';
-import Project from '../../models/Project.js';
+import Project from '../../../shared/models/Project.js';
 import logger from '../../services/logger.js';
 
 export default {

@@ -94,8 +94,8 @@
 
 <script>
 import { reactive, computed, watch, onMounted, ref } from 'vue';
-import { FREQUENCY } from '../../models/RecurrenceRule.js';
-import { getTodayDateOnlyLocal } from '../../utils/dateTime.js';
+import { FREQUENCY } from '../../../shared/models/RecurrenceRule.js';
+import { getTodayDateOnlyLocal } from '../../../shared/utils/dateTime.js';
 
 export default {
   name: 'RecurrenceForm',

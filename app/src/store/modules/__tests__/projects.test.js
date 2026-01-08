@@ -12,7 +12,7 @@ vi.stubGlobal('window', {
 });
 
 // Mock Project model
-vi.mock('../../../models/Project', () => {
+vi.mock('../../../../shared/models/Project', () => {
   const MockProject = function (data) {
     Object.assign(this, data);
 

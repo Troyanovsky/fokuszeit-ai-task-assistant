@@ -89,7 +89,7 @@
 <script>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
-import { Task } from '../../models/Task.js';
+import { Task } from '../../../shared/models/Task.js';
 import TaskItem from './TaskItem.vue';
 import TaskForm from './TaskForm.vue';
 import logger from '../../services/logger';

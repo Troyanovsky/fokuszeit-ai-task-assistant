@@ -187,7 +187,7 @@ if (args.plannedTime && typeof args.plannedTime === 'string') {
 
 ### Date-Only Normalization (Shared Utility)
 
-**Location:** `app/src/utils/dateTime.js`
+**Location:** `app/shared/utils/dateTime.js`
 
 Use these helpers to keep date-only behavior timezone-safe:
 - `coerceDateOnly(value)` → `YYYY-MM-DD` (local calendar)
@@ -278,7 +278,7 @@ The system **does not store timezone information**. This is intentional:
 
 ### Unit Tests for Date-Only Semantics
 
-Prefer direct tests for the shared date-only helpers in `app/src/utils/dateTime.js` to prevent timezone regressions.
+Prefer direct tests for the shared date-only helpers in `app/shared/utils/dateTime.js` to prevent timezone regressions.
 
 ### Integration Tests for Function Handlers
 

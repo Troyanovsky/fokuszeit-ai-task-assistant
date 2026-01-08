@@ -4,8 +4,8 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import recurrenceService from '../recurrence.js';
-import { RecurrenceRule, FREQUENCY } from '../../models/RecurrenceRule.js';
-import { Task, STATUS } from '../../models/Task.js';
+import { RecurrenceRule, FREQUENCY } from '../../../shared/models/RecurrenceRule.js';
+import { Task, STATUS } from '../../../shared/models/Task.js';
 import databaseService from '../database.js';
 
 // Mock the database service
@@ -20,7 +20,7 @@ vi.mock('../database.js', () => ({
 }));
 
 // Mock logger
-vi.mock('../logger.js', () => ({
+vi.mock('../../logger.js', () => ({
   default: {
     info: vi.fn(),
     error: vi.fn(),

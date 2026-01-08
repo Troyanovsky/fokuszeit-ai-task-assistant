@@ -1,5 +1,5 @@
 // Import Project model - handle both ES modules and CommonJS modules
-import ProjectModule from '../../models/Project';
+import ProjectModule from '../../../shared/models/Project';
 import logger from '../../services/logger';
 
 const Project = ProjectModule.default || ProjectModule;

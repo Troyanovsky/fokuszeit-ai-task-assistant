@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import tasksModule from '../tasks.js';
-import { STATUS, PRIORITY } from '../../../models/Task.js';
+import { STATUS, PRIORITY } from '../../../../shared/models/Task.js';
 
 // Mock window object
 vi.stubGlobal('window', {
@@ -15,7 +15,7 @@ vi.stubGlobal('window', {
 });
 
 // Mock Task model
-vi.mock('../../../models/Task.js', () => {
+vi.mock('../../../../shared/models/Task.js', () => {
   const STATUS = {
     PLANNING: 'planning',
     DOING: 'doing',

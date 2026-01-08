@@ -3,10 +3,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TYPE } from '../../../models/Notification.js';
+import { TYPE } from '../../../../shared/models/Notification.js';
 import notificationsModule from '../notifications.js';
 
-vi.mock('../../../models/Notification.js', () => {
+vi.mock('../../../../shared/models/Notification.js', () => {
   const TYPE = {
     REMINDER: 'reminder',
     DUE_DATE: 'due_date',

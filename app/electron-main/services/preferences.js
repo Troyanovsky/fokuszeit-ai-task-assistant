@@ -4,7 +4,7 @@
  */
 
 import Store from 'electron-store';
-import logger from '../../electron-main/logger.js';
+import logger from '../logger.js';
 
 class PreferencesService {
   constructor() {

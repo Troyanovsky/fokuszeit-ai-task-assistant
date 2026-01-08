@@ -54,6 +54,16 @@ try {
 }
 ```
 
+### In Shared Modules
+
+Shared modules (used by both main and renderer) should import the shared logger adapter:
+
+```javascript
+import logger from '../logger.js';
+
+logger.info('Shared module initialized');
+```
+
 ## Log Levels
 
 The logger supports the following levels (in order of decreasing severity):

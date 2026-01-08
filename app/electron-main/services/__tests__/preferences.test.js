@@ -67,7 +67,7 @@ vi.mock('electron-store', () => {
 });
 
 // Mock logger
-vi.mock('../../../electron-main/logger', () => ({
+vi.mock('../../logger.js', () => ({
   default: {
     logError: vi.fn(),
     info: vi.fn(),

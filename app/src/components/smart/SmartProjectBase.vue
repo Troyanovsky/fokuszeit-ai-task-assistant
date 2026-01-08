@@ -30,9 +30,9 @@
 <script>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
-import { Task } from '../../models/Task.js';
+import { Task } from '../../../shared/models/Task.js';
 import logger from '../../services/logger';
-import { formatDateOnlyLocal } from '../../utils/dateTime.js';
+import { formatDateOnlyLocal } from '../../../shared/utils/dateTime.js';
 import { useLocalTodayDate } from './useLocalTodayDate.js';
 
 export default {

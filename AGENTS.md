@@ -46,6 +46,8 @@ Preload Script (preload.cjs)
 └── Context-isolated IPC bridge (security layer)
 ```
 
+Process boundaries: main process modules may import only from `app/electron-main/*` and `app/shared/*`; renderer modules may import only from `app/src/*` and `app/shared/*`. Shared modules must not depend on process-specific APIs.
+
 ### AI Integration Flow
 
 1. User sends message via chat interface
@@ -59,18 +61,18 @@ Preload Script (preload.cjs)
 - `/app/electron-main/aiService.js` - AI orchestration and LLM calls
 - `/app/electron-main/functionHandlers.js` - Function call implementations
 - `/app/electron-main/ipcHandlers.js` - Consolidated IPC request handlers
-- `/app/src/services/functionSchemas.js` - OpenAI function definitions
+- `/app/electron-main/services/functionSchemas.js` - OpenAI function definitions
 
 ### Data Layer Architecture
 
-**Models** (`src/models/`): Handle data transformation between database (snake_case) and application (camelCase). Every model has `toDatabase()` and `fromDatabase()` methods.
+**Models** (`shared/models/`): Handle data transformation between database (snake_case) and application (camelCase). Every model has `toDatabase()` and `fromDatabase()` methods.
 
 - `Project.js` - Project entity
 - `Task.js` - Task entity with dependencies and labels
 - `Notification.js` - Notification entity with type constants
 - `RecurrenceRule.js` - Recurrence rule entity
 
-**Services** (`src/services/`): Singleton business logic classes. Services use models for validation and transformation.
+**Services** (`electron-main/services/`): Singleton business logic classes. Services use models for validation and transformation.
 
 - `project.js` - Project CRUD operations
 - `task.js` - Task CRUD and scheduling operations
@@ -81,15 +83,18 @@ Preload Script (preload.cjs)
 - `database.js` - Database connection and query wrapper
 - `functionSchemas.js` - OpenAI function definitions for AI
 
-**Database**: SQLite with `better-sqlite3`. Schema in `database/schema.js` with migrations in `database/migrations/`.
+**Database**: SQLite with `better-sqlite3`. Schema in `app/database/schema.js` with migrations in `app/database/migrations/`.
 
-**Utilities** (`src/utils/`): Shared helper modules:
+**Utilities** (`shared/utils/`): Shared helper modules:
 - `dateTime.js` - Date/time utilities for local calendar dates and UTC timestamps
 - `sqliteErrorHandler.js` - SQLite error parsing and structured error responses
 - `loggingConfig.js` - Logging configuration
 - `loggingSanitizers.js` - Log message sanitization for security
+- `logExample.js` - Logging example file
 
-**Data Integrity** (`src/services/dataIntegrity.js`): Service for checking and maintaining data consistency:
+**Shared Logger** (`shared/logger.js`): Process-agnostic logger adapter that routes to appropriate logger (main/renderer).
+
+**Data Integrity** (`electron-main/services/dataIntegrity.js`): Service for checking and maintaining data consistency:
 - Finds orphaned tasks, notifications, and recurrence rules
 - Validates recurrence rule data
 - Provides cleanup utilities for expired/orphaned data
@@ -244,7 +249,8 @@ window.electron.removeListener('notifications:changed', wrappedNotificationsChan
 
 Use `electron-log` for all logging (never `console.log`):
 - Main process: `import logger from './electron-main/logger.js'`
-- Services: `import logger from '../../electron-main/logger.js'` (direct import, no conditional logic)
+- Main process services: `import logger from '../logger.js'` (direct import, no conditional logic)
+- Shared modules: `import logger from '../logger.js'` (uses shared logger adapter)
 - Renderer: `import logger from './services/logger.js'`
 - Methods: `logger.info()`, `logger.warn()`, `logger.error()`, `logger.logError(error, context)`
 
@@ -258,7 +264,7 @@ Use `electron-log` for all logging (never `console.log`):
 - `/app/electron-main/functionHandlers.js` - AI function call implementations
 - `/app/electron-main/ipcHandlers.js` - Consolidated IPC request handlers
 - `/app/database/schema.js` - Database schema
-- `/app/src/store/index.js` - Root store
-- `/app/src/utils/dateTime.js` - Date/time utilities
-- `/app/src/services/dataIntegrity.js` - Data integrity checks
+- `/app/shared/models/Task.js` - Task model with validation
+- `/app/shared/utils/dateTime.js` - Date/time utilities
+- `/app/electron-main/services/dataIntegrity.js` - Data integrity checks
 - `/app/doc/DATE_TIME_FORMATS.md` - Date/time format specification

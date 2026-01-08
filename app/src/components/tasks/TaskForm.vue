@@ -247,7 +247,7 @@
 
 <script>
 import { reactive, onMounted, ref, computed } from 'vue';
-import { TYPE } from '../../models/Notification';
+import { TYPE } from '../../../shared/models/Notification';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../services/logger';
 import RecurrenceForm from '../recurrence/RecurrenceForm.vue';
@@ -257,7 +257,7 @@ import {
   formatDateOnlyLocal,
   getTodayDateOnlyLocal,
   parseDateOnlyLocal,
-} from '../../utils/dateTime.js';
+} from '../../../shared/utils/dateTime.js';
 
 const DEFAULT_NOTIFICATION_TIME = '09:00';
 

@@ -4,9 +4,9 @@
  */
 
 import databaseService from './database.js';
-import Project from '../models/Project.js';
-import logger from '../../electron-main/logger.js';
-import { parseSqliteError, createValidationError, createNotFoundError } from '../utils/sqliteErrorHandler.js';
+import Project from '../../shared/models/Project.js';
+import logger from '../logger.js';
+import { parseSqliteError, createValidationError, createNotFoundError } from '../../shared/utils/sqliteErrorHandler.js';
 
 class ProjectManager {
   /**

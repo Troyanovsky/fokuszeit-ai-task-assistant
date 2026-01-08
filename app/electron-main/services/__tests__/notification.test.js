@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Notification, TYPE } from '../../models/Notification';
+import { Notification, TYPE } from '../../../shared/models/Notification';
 import notificationService from '../notification';
 
 // Mock the database service

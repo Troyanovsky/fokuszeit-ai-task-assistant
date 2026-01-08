@@ -16,9 +16,48 @@ This documentation is the folder structure for the project. It may be used to fi
         └── 📁electron-main
             └── 📁__tests__
                 └── aiService.test.js
+                └── functionHandlers.test.js
+            └── 📁services
+                └── 📁__tests__
+                    └── database.test.js
+                    └── integration.test.js
+                    └── notification.edge-cases.test.js
+                    └── notification.test.js
+                    └── preferences.test.js
+                    └── project.test.js
+                    └── recurrence.test.js
+                    └── task.test.js
+                └── dataIntegrity.js
+                └── database.js
+                └── functionSchemas.js
+                └── notification.js
+                └── preferences.js
+                └── project.js
+                └── recurrence.js
+                └── task.js
             └── aiService.js
             └── functionHandlers.js
             └── ipcHandlers.js
+            └── logger.js
+        └── 📁shared
+            └── 📁models
+                └── 📁__tests__
+                    └── RecurrenceRule.test.js
+                    └── Task.test.js
+                └── Notification.js
+                └── Project.js
+                └── RecurrenceRule.js
+                └── Task.js
+            └── 📁utils
+                └── 📁__tests__
+                    └── dateTime.test.js
+                    └── loggingConfig.test.js
+                    └── loggingSanitizers.test.js
+                └── dateTime.js
+                └── logExample.js
+                └── loggingConfig.js
+                └── loggingSanitizers.js
+                └── sqliteErrorHandler.js
             └── logger.js
         └── AGENTS.md
         └── electron.js
@@ -60,53 +99,25 @@ This documentation is the folder structure for the project. It may be used to fi
                     └── TaskFilter.vue
                     └── TaskForm.vue
                     └── TaskItem.vue
-            └── 📁models
-                └── 📁__tests__
-                    └── RecurrenceRule.test.js
-                └── Notification.js
-                └── Project.js
-                └── RecurrenceRule.js
-                └── Task.js
             └── 📁router
                 └── index.js
             └── 📁services
-                └── 📁__tests__
-                    └── database.test.js
-                    └── integration.test.js
-                    └── notification.test.js
-                    └── preferences.test.js
-                    └── project.test.js
-                    └── recurrence.test.js
-                    └── task.test.js
-                └── dataIntegrity.js
-                └── database.js
-                └── functionSchemas.js
                 └── logger.js
-                └── notification.js
-                └── preferences.js
-                └── project.js
-                └── recurrence.js
-                └── task.js
             └── 📁store
                 └── index.js
                 └── 📁modules
                     └── 📁__tests__
                         └── ai.test.js
+                        └── notifications.test.js
                         └── preferences.test.js
                         └── projects.test.js
                         └── tasks.test.js
                     └── ai.js
+                    └── notifications.js
                     └── preferences.js
                     └── projects.js
                     └── recurrence.js
                     └── tasks.js
-            └── 📁utils
-                └── 📁__tests__
-                    └── loggingConfig.test.js
-                    └── loggingSanitizers.test.js
-                └── logExample.js
-                └── loggingConfig.js
-                └── loggingSanitizers.js
             └── 📁views
                 └── HomeView.vue
                 └── SettingsView.vue

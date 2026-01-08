@@ -5,7 +5,7 @@
 
 import databaseService from './database.js';
 import recurrenceService from './recurrence.js';
-import logger from '../../electron-main/logger.js';
+import logger from '../logger.js';
 
 class DataIntegrityService {
   /**
@@ -111,7 +111,7 @@ class DataIntegrityService {
       for (const ruleData of allRules) {
         try {
           // Try to create a RecurrenceRule instance to validate the data
-          const { RecurrenceRule } = await import('../models/RecurrenceRule.js');
+          const { RecurrenceRule } = await import('../../shared/models/RecurrenceRule.js');
           const rule = RecurrenceRule.fromDatabase(ruleData);
 
           if (!rule.validate()) {

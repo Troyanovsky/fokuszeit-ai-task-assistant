@@ -2,15 +2,15 @@
  * AI function handlers for task, project, and notification operations.
  */
 
-import Project from '../src/models/Project.js';
-import projectManager from '../src/services/project.js';
-import taskManager from '../src/services/task.js';
-import notificationService from '../src/services/notification.js';
-import { Notification, TYPE } from '../src/models/Notification.js';
+import Project from '../shared/models/Project.js';
+import projectManager from './services/project.js';
+import taskManager from './services/task.js';
+import notificationService from './services/notification.js';
+import { Notification, TYPE } from '../shared/models/Notification.js';
 import logger from './logger.js';
-import { isDebugLoggingEnabled, shouldLogRaw } from '../src/utils/loggingConfig.js';
-import { summarizeTasks, summarizeNotifications } from '../src/utils/loggingSanitizers.js';
-import { coerceDateOnly, formatDateOnlyLocal } from '../src/utils/dateTime.js';
+import { isDebugLoggingEnabled, shouldLogRaw } from '../shared/utils/loggingConfig.js';
+import { summarizeTasks, summarizeNotifications } from '../shared/utils/loggingSanitizers.js';
+import { coerceDateOnly, formatDateOnlyLocal } from '../shared/utils/dateTime.js';
 
 /**
  * Utility function to resolve a project ID from a name or ID
@@ -939,7 +939,7 @@ async function handleQueryNotifications(args, baseResult) {
  * @returns {Promise<Object>} - Function result
  */
 async function handleSetTaskRecurrence(args, baseResult) {
-  const recurrenceService = await import('../src/services/recurrence.js');
+  const recurrenceService = await import('./services/recurrence.js');
 
   // Validate required parameters
   if (!args.taskId || !args.frequency) {
@@ -1057,7 +1057,7 @@ async function handleSetTaskRecurrence(args, baseResult) {
  * @returns {Promise<Object>} - Function result
  */
 async function handleRemoveTaskRecurrence(args, baseResult) {
-  const recurrenceService = await import('../src/services/recurrence.js');
+  const recurrenceService = await import('./services/recurrence.js');
 
   if (!args.taskId) {
     return {
@@ -1115,7 +1115,7 @@ async function handleRemoveTaskRecurrence(args, baseResult) {
  * @returns {Promise<Object>} - Function result
  */
 async function handleGetTaskRecurrence(args, baseResult) {
-  const recurrenceService = await import('../src/services/recurrence.js');
+  const recurrenceService = await import('./services/recurrence.js');
 
   if (!args.taskId) {
     return {

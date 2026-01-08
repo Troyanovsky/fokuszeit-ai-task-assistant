@@ -8,7 +8,7 @@
  */
 
 import { ref } from 'vue';
-import { getTodayDateOnlyLocal } from '../../utils/dateTime.js';
+import { getTodayDateOnlyLocal } from '../../../shared/utils/dateTime.js';
 
 /**
  * Create a reactive local calendar date string that refreshes shortly after local midnight.

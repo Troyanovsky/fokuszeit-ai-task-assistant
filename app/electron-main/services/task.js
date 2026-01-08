@@ -4,13 +4,13 @@
  */
 
 import databaseService from './database.js';
-import { Task, STATUS, PRIORITY } from '../models/Task.js';
+import { Task, STATUS, PRIORITY } from '../../shared/models/Task.js';
 import notificationService from './notification.js';
 import recurrenceService from './recurrence.js';
-import { isDebugLoggingEnabled } from '../utils/loggingConfig.js';
-import { redactTask } from '../utils/loggingSanitizers.js';
-import { coerceDateOnly, formatDateOnlyLocal, getTodayDateOnlyLocal } from '../utils/dateTime.js';
-import logger from '../../electron-main/logger.js';
+import { isDebugLoggingEnabled } from '../../shared/utils/loggingConfig.js';
+import { redactTask } from '../../shared/utils/loggingSanitizers.js';
+import { coerceDateOnly, formatDateOnlyLocal, getTodayDateOnlyLocal } from '../../shared/utils/dateTime.js';
+import logger from '../logger.js';
 
 class TaskManager {
   /**

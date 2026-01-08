@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import aiService from '../aiService.js';
 import axios from 'axios';
 import Store from 'electron-store';
-import projectManager from '../../src/services/project.js';
+import projectManager from '../services/project.js';
 
 // Mock axios
 vi.mock('axios');
@@ -20,7 +20,7 @@ vi.mock('electron-store', () => {
 });
 
 // Mock project manager
-vi.mock('../../src/services/project.js', () => ({
+vi.mock('../services/project.js', () => ({
   default: {
     getProjects: vi.fn(),
     addProject: vi.fn(),

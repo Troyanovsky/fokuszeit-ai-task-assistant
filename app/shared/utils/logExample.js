@@ -1,4 +1,4 @@
-import logger from '../services/logger';
+import logger from '../logger.js';
 
 /**
  * This file demonstrates how to use the centralized logger

@@ -2,10 +2,10 @@
  * Vuex tasks module for task state management.
  */
 
-import { Task } from '../../models/Task';
+import { Task } from '../../../shared/models/Task';
 import logger from '../../services/logger';
-import { isDebugLoggingEnabled } from '../../utils/loggingConfig.js';
-import { redactTask, summarizeTasks } from '../../utils/loggingSanitizers.js';
+import { isDebugLoggingEnabled } from '../../../shared/utils/loggingConfig.js';
+import { redactTask, summarizeTasks } from '../../../shared/utils/loggingSanitizers.js';
 
 // Initial state
 const state = {

@@ -20,7 +20,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { coerceDateOnly } from '../utils/dateTime.js';
-import logger from '../services/logger.js';
+import logger from '../logger.js';
 
 // Task status constants
 export const STATUS = {

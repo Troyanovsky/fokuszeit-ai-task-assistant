@@ -4,10 +4,10 @@
  */
 
 import databaseService from './database.js';
-import { Notification, TYPE } from '../models/Notification.js';
-import { STATUS } from '../models/Task.js';
+import { Notification, TYPE } from '../../shared/models/Notification.js';
+import { STATUS } from '../../shared/models/Task.js';
 import { Notification as ElectronNotification, BrowserWindow } from 'electron';
-import logger from '../../electron-main/logger.js';
+import logger from '../logger.js';
 
 class NotificationManager {
   constructor() {

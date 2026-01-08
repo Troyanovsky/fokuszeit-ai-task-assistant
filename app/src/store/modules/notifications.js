@@ -4,7 +4,7 @@
  * and event-based updates in components.
  */
 
-import { Notification, TYPE } from '../../models/Notification.js';
+import { Notification, TYPE } from '../../../shared/models/Notification.js';
 import logger from '../../services/logger.js';
 
 const getTaskId = (notification) => {

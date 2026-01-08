@@ -6,7 +6,7 @@
  * after app restarts or system events (clock changes, sleep/wake).
  */
 
-import logger from '../../src/services/logger.js';
+import logger from '../../electron-main/logger.js';
 
 /**
  * Run the migration to add notification tracking

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import taskManager from '../task.js';
 import databaseService from '../database.js';
 import notificationService from '../notification.js';
-import { Task, STATUS, PRIORITY } from '../../models/Task.js';
+import { Task, STATUS, PRIORITY } from '../../../shared/models/Task.js';
 
 // Create shared spies that can be controlled in individual tests
 const mockTaskToDatabase = vi.fn(function () {
@@ -65,7 +65,7 @@ beforeEach(() => {
 });
 
 // Mock the Task model
-vi.mock('../../models/Task.js', () => {
+vi.mock('../../../shared/models/Task.js', () => {
   const STATUS = {
     PLANNING: 'planning',
     DOING: 'doing',
