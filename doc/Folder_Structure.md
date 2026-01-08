@@ -17,6 +17,14 @@ This documentation is the folder structure for the project. It may be used to fi
             └── 📁__tests__
                 └── aiService.test.js
                 └── functionHandlers.test.js
+            └── 📁ipc
+                └── aiIpc.js
+                └── notificationIpc.js
+                └── preferencesIpc.js
+                └── projectIpc.js
+                └── recurrenceIpc.js
+                └── taskCrudIpc.js
+                └── taskSchedulingIpc.js
             └── 📁services
                 └── 📁__tests__
                     └── database.test.js
@@ -92,6 +100,8 @@ This documentation is the folder structure for the project. It may be used to fi
                     └── SmartProjectBase.vue
                     └── TodayProgress.vue
                     └── TodaySmartProject.vue
+                    └── useLocalTodayDate.js
+                    └── __tests__
                 └── 📁system
                     └── NotificationListener.vue
                 └── 📁tasks

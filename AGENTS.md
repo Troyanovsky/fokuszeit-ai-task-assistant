@@ -60,7 +60,8 @@ Process boundaries: main process modules may import only from `app/electron-main
 **Key files for AI changes:**
 - `/app/electron-main/aiService.js` - AI orchestration and LLM calls
 - `/app/electron-main/functionHandlers.js` - Function call implementations
-- `/app/electron-main/ipcHandlers.js` - Consolidated IPC request handlers
+- `/app/electron-main/ipcHandlers.js` - Consolidated IPC handler orchestration
+- `/app/electron-main/ipc/` - Domain-specific IPC registrar modules
 - `/app/electron-main/services/functionSchemas.js` - OpenAI function definitions
 
 ### Data Layer Architecture
@@ -127,9 +128,9 @@ Virtual collections based on computed filters (no separate database table):
 - `TodaySmartProject.vue` - Shows tasks due today
 - `OverdueSmartProject.vue` - Shows overdue tasks
 - `SmartProjectBase.vue` - Abstract base with shared logic
+- `useLocalTodayDate.js` - Composable providing reactive local date that auto-refreshes after midnight
 
-**Note**: Smart projects automatically refresh their local “today” date shortly after local midnight so the
-Today/Overdue views update even if no task data changes occur.
+**Note**: Smart projects automatically refresh their local "today" date shortly after local midnight via `useLocalTodayDate()`, so Today/Overdue views update even if no task data changes occur.
 
 ### NotificationListener Pattern
 
@@ -179,6 +180,16 @@ recurrence_rules (id, task_id, frequency, interval, end_date, count, created_at)
 Models transform between database and application formats. Always use `fromDatabase()` when reading from DB and `toDatabase()` before writing.
 
 ### IPC Handler Pattern
+
+**Domain-specific registrars** (`electron-main/ipc/`): Each module handles IPC registration for a specific domain:
+- `aiIpc.js` - AI chat and configuration operations
+- `projectIpc.js` - Project CRUD operations
+- `taskCrudIpc.js` - Task CRUD operations
+- `taskSchedulingIpc.js` - Task scheduling, prioritization, and day planning
+- `notificationIpc.js` - Notification CRUD and scheduling operations
+- `recurrenceIpc.js` - Recurrence rule management
+- `preferencesIpc.js` - User preferences management
+
 All main-process operations follow this pattern:
 ```javascript
 ipcMain.handle('channel:name', async (_, data) => {
@@ -192,6 +203,8 @@ ipcMain.handle('channel:name', async (_, data) => {
   }
 });
 ```
+
+**Orchestration**: `ipcHandlers.js` coordinates registration by delegating to domain-specific registrars via `setupIpcHandlers(mainWindow, aiService)`.
 
 **Critical**: Never use `ipcMain.emit()` for renderer communication. It bypasses context isolation. Always use `webContents.send()` from the main process to send events to the renderer.
 
@@ -262,9 +275,11 @@ Use `electron-log` for all logging (never `console.log`):
 - `/app/preload.cjs` - IPC security bridge
 - `/app/electron-main/aiService.js` - AI orchestration
 - `/app/electron-main/functionHandlers.js` - AI function call implementations
-- `/app/electron-main/ipcHandlers.js` - Consolidated IPC request handlers
+- `/app/electron-main/ipcHandlers.js` - Consolidated IPC handler orchestration
+- `/app/electron-main/ipc/` - Domain-specific IPC registrar modules
 - `/app/database/schema.js` - Database schema
 - `/app/shared/models/Task.js` - Task model with validation
 - `/app/shared/utils/dateTime.js` - Date/time utilities
 - `/app/electron-main/services/dataIntegrity.js` - Data integrity checks
+- `/app/src/components/smart/useLocalTodayDate.js` - Reactive local date composable
 - `/app/doc/DATE_TIME_FORMATS.md` - Date/time format specification
