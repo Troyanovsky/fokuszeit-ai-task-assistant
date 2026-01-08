@@ -45,7 +45,7 @@
         "Add tests for main process service layer",
         "Update AGENTS.md with clear separation guidance"
       ],
-      "passes": false,
+      "passes": true,
       "breakdown": [
         "Inventory main-process imports from app/src and document usage",
         "Define and document process boundaries and shared layer rules",
@@ -53,7 +53,7 @@
         "Move DB-backed services to app/electron-main/services; renderer uses IPC only",
         "Add tests for main service layer and update AGENTS.md"
       ],
-      "notes": "Sequence: establish shared layer before functionHandlers and IPC refactors. Recommended to do first.",
+      "notes": "Sequence: establish shared layer before functionHandlers and IPC refactors. Recommended to do first. COMPLETED: Main process files now import only from electron-main/* and shared/*; shared layer established with models and utils; renderer uses IPC only.",
       "recommended_sequence": 1
     },
     {
