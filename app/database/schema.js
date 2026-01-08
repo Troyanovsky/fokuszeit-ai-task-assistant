@@ -40,6 +40,7 @@ const schema = {
       type TEXT NOT NULL,
       message TEXT,
       created_at TEXT NOT NULL,
+      sent_at TEXT,
       FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE
     )
   `,

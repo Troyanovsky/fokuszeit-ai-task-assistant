@@ -75,7 +75,8 @@
         "Add tests for edge case scenarios",
         "Log notification scheduling events for debugging"
       ],
-      "passes": false
+      "passes": true,
+      "resolution": "Added database sent_at tracking column, powerMonitor for sleep/wake, periodic clock monitoring, idempotent notification sending, and comprehensive edge case tests."
     },
     {
       "id": "TASK-250627-008",

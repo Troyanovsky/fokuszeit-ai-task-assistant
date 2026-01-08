@@ -26,6 +26,7 @@ class Notification {
     this.type = data.type || TYPE.REMINDER;
     this.message = data.message || '';
     this.createdAt = data.created_at ? new Date(data.created_at) : new Date();
+    this.sentAt = data.sentAt || data.sent_at ? new Date(data.sentAt || data.sent_at) : null;
   }
 
   /**
@@ -60,6 +61,7 @@ class Notification {
       type: this.type,
       message: this.message,
       created_at: this.createdAt.toISOString(),
+      sent_at: this.sentAt ? this.sentAt.toISOString() : null,
     };
   }
 
@@ -82,6 +84,8 @@ class Notification {
     if (data.time !== undefined) this.time = data.time;
     if (data.type !== undefined) this.type = data.type;
     if (data.message !== undefined) this.message = data.message;
+    if (data.sent_at !== undefined) this.sentAt = data.sent_at ? new Date(data.sent_at) : null;
+    if (data.sentAt !== undefined) this.sentAt = data.sentAt;
   }
 }
 

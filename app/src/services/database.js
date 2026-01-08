@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { app } from 'electron';
 import * as initialMigration from '../../database/migrations/initial.js';
+import * as notificationTrackingMigration from '../../database/migrations/002_add_notification_tracking.js';
 import logger from '../../electron-main/logger.js';
 
 class DatabaseService {
@@ -60,8 +61,39 @@ class DatabaseService {
    */
   async runMigrations() {
     try {
-      // Run initial migration to create tables
-      await initialMigration.up(this.db);
+      // Create migrations tracking table if it doesn't exist
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+          version TEXT PRIMARY KEY,
+          applied_at TEXT NOT NULL
+        );
+      `);
+
+      // Helper function to run migration if not already applied
+      const runMigration = async (version, migrationFn) => {
+        const applied = this.queryOne('SELECT version FROM schema_migrations WHERE version = ?', [version]);
+
+        if (!applied) {
+          logger.info(`Running migration: ${version}`);
+          const success = await migrationFn(this.db);
+          if (success) {
+            this.insert(
+              'INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)',
+              [version, new Date().toISOString()]
+            );
+            logger.info(`Migration ${version} completed successfully`);
+          } else {
+            throw new Error(`Migration ${version} failed`);
+          }
+        } else {
+          logger.info(`Migration ${version} already applied, skipping`);
+        }
+      };
+
+      // Run migrations in order
+      await runMigration('001_initial', async (db) => initialMigration.up(db));
+      await runMigration('002_add_notification_tracking', async (db) => notificationTrackingMigration.up(db));
+
       return true;
     } catch (error) {
       logger.logError(error, 'Error running migrations');

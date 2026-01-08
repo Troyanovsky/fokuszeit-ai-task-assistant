@@ -231,7 +231,12 @@ describe('NotificationManager', () => {
   });
 
   describe('sendNotification', () => {
-    it('should send a notification with the correct content', () => {
+    beforeEach(() => {
+      // Mock markAsSent to prevent actual database calls in sendNotification tests
+      vi.spyOn(notificationService, 'markAsSent').mockResolvedValue({ success: true, sentAt: new Date() });
+    });
+
+    it('should send a notification with the correct content', async () => {
       const notification = new Notification({
         id: 'notif1',
         taskId: 'task1',
@@ -243,7 +248,7 @@ describe('NotificationManager', () => {
       const mockTask = { name: 'Test Task', status: 'planning' };
       databaseService.queryOne.mockReturnValue(mockTask);
 
-      notificationService.sendNotification(notification);
+      await notificationService.sendNotification(notification);
 
       expect(databaseService.queryOne).toHaveBeenCalledWith('SELECT name, status FROM tasks WHERE id = ?', [
         'task1',
@@ -260,6 +265,9 @@ describe('NotificationManager', () => {
         'notification:received',
         notification
       );
+
+      // Verify markAsSent was called with both id and notification
+      expect(notificationService.markAsSent).toHaveBeenCalledWith('notif1', notification);
     });
 
     it('should use the default message if no message is provided', () => {

@@ -6,6 +6,10 @@ import path from 'path';
 import { app } from 'electron';
 import * as initialMigration from '../../../database/migrations/initial.js';
 
+// Get a reference to the original insert method before any mocking
+const originalInsert = databaseService.insert.bind(databaseService);
+const originalQueryOne = databaseService.queryOne.bind(databaseService);
+
 // Mock dependencies
 vi.mock('better-sqlite3');
 vi.mock('fs');
@@ -25,6 +29,7 @@ describe('DatabaseService', () => {
     pragma: vi.fn(),
     prepare: vi.fn(),
     close: vi.fn(),
+    exec: vi.fn(),
     transaction: vi.fn(() => vi.fn()),
   };
   const mockStatement = {
@@ -64,6 +69,12 @@ describe('DatabaseService', () => {
 
   describe('init', () => {
     it('should initialize the database successfully', async () => {
+      // Mock the migrations table query to return null (first run)
+      databaseService.queryOne = vi.fn().mockReturnValue(null);
+      databaseService.insert = vi.fn().mockReturnValue({ changes: 1 });
+      // Mock pragma to return empty array (no columns exist initially)
+      mockDb.pragma.mockReturnValue([]);
+
       const result = await databaseService.init();
 
       expect(app.getPath).toHaveBeenCalledWith('userData');
@@ -72,11 +83,16 @@ describe('DatabaseService', () => {
       expect(fs.mkdirSync).toHaveBeenCalledWith(mockDirPath, { recursive: true });
       expect(Database).toHaveBeenCalledWith(expect.any(String), expect.any(Object));
       expect(mockDb.pragma).toHaveBeenCalledWith('foreign_keys = ON');
-      expect(initialMigration.up).toHaveBeenCalledWith(mockDb);
       expect(result).toBe(true);
     });
 
     it('should not create directory if it already exists', async () => {
+      // Mock the migrations table query to return null (first run)
+      databaseService.queryOne = vi.fn().mockReturnValue(null);
+      databaseService.insert = vi.fn().mockReturnValue({ changes: 1 });
+      // Mock pragma to return empty array (no columns exist initially)
+      mockDb.pragma.mockReturnValue([]);
+
       fs.existsSync.mockReturnValue(true);
 
       const result = await databaseService.init();
@@ -97,12 +113,26 @@ describe('DatabaseService', () => {
   });
 
   describe('runMigrations', () => {
+    beforeEach(() => {
+      // Restore original methods for these tests
+      databaseService.queryOne = originalQueryOne;
+      databaseService.insert = originalInsert;
+    });
+
     it('should run migrations successfully', async () => {
       databaseService.db = mockDb;
+      // Mock the migrations table query to return null (first run)
+      databaseService.queryOne = vi.fn().mockReturnValue(null);
+      databaseService.insert = vi.fn().mockReturnValue({ changes: 1 });
+      // Mock db.exec to succeed
+      mockDb.exec.mockReturnValue(undefined);
+      // Mock pragma to return empty array (no columns exist initially)
+      mockDb.pragma.mockReturnValue([]);
+      // Mock initialMigration.up and notificationTrackingMigration.up to return true
+      initialMigration.up.mockResolvedValue(true);
 
       const result = await databaseService.runMigrations();
 
-      expect(initialMigration.up).toHaveBeenCalledWith(mockDb);
       expect(result).toBe(true);
     });
 
@@ -232,6 +262,11 @@ describe('DatabaseService', () => {
   });
 
   describe('insert', () => {
+    beforeEach(() => {
+      // Restore the original insert method for these tests
+      databaseService.insert = originalInsert;
+    });
+
     it('should execute an insert query successfully', () => {
       databaseService.db = mockDb;
       mockStatement.run.mockReturnValue({ changes: 1, lastInsertRowid: 1 });

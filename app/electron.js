@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, powerMonitor } from 'electron';
 import path from 'path';
 import url from 'url';
 import { fileURLToPath } from 'url';
@@ -20,6 +20,62 @@ const __dirname = dirname(__filename);
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
+
+/**
+ * Initialize power monitoring for notification rescheduling
+ */
+function initPowerMonitoring() {
+  // Handle system resume from sleep
+  powerMonitor.on('resume', () => {
+    logger.info('System resumed from sleep, rescheduling notifications');
+    notificationService.rescheduleAllPending();
+  });
+
+  // Handle system suspend (for potential future use)
+  powerMonitor.on('suspend', () => {
+    logger.info('System suspending, pending notifications will be rescheduled on resume');
+  });
+
+  // Handle shutdown (for potential future use)
+  powerMonitor.on('shutdown', () => {
+    logger.info('System shutting down');
+  });
+
+  logger.info('Power monitoring initialized');
+}
+
+/**
+ * Initialize clock change detection
+ */
+function initClockMonitoring() {
+  let lastCheckTime = Date.now();
+  const CHECK_INTERVAL = 60000; // Check every minute
+  const CLOCK_CHANGE_THRESHOLD_MS = 15000; // 15 seconds - accounts for timer jitter and NTP sync
+
+  // Periodic check for clock changes
+  const clockCheckInterval = setInterval(() => {
+    const now = Date.now();
+    const expectedTime = lastCheckTime + CHECK_INTERVAL;
+    const actualDiff = now - expectedTime; // Can be negative (backward) or positive (forward)
+    const timeDiff = Math.abs(actualDiff);
+
+    // If clock changed by more than threshold in either direction
+    if (timeDiff > CLOCK_CHANGE_THRESHOLD_MS) {
+      const direction = actualDiff > 0 ? 'forward' : 'backward';
+      logger.warn(`Clock change detected: ${direction} by ${timeDiff}ms`);
+      notificationService.rescheduleAllPending();
+    }
+
+    lastCheckTime = now;
+  }, CHECK_INTERVAL);
+
+  // Clear interval on app quit
+  app.on('before-quit', () => {
+    clearInterval(clockCheckInterval);
+  });
+
+  logger.info('Clock monitoring initialized');
+}
 
 /**
  * Initialize the application services
@@ -140,6 +196,8 @@ function createWindow() {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
   await initServices();
+  initPowerMonitoring();
+  initClockMonitoring();
   createWindow();
 });
 

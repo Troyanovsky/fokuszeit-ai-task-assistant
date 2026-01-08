@@ -100,8 +100,9 @@ class NotificationManager {
     try {
       const now = new Date();
 
+      // Only load unsent notifications to prevent duplicates after restart
       const notifications = databaseService.query(
-        'SELECT * FROM notifications WHERE time > ? ORDER BY time ASC',
+        'SELECT * FROM notifications WHERE time > ? AND sent_at IS NULL ORDER BY time ASC',
         [now.toISOString()]
       );
       return notifications.map((notification) => Notification.fromDatabase(notification));
@@ -138,8 +139,8 @@ class NotificationManager {
       });
 
       const result = databaseService.insert(
-        'INSERT INTO notifications (id, task_id, time, type, message, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [data.id, data.task_id, data.time, data.type, data.message, data.created_at]
+        'INSERT INTO notifications (id, task_id, time, type, message, created_at, sent_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [data.id, data.task_id, data.time, data.type, data.message, data.created_at, data.sent_at]
       );
 
       if (result && result.changes > 0) {
@@ -162,6 +163,8 @@ class NotificationManager {
    * Update an existing notification
    * @param {Object} notificationData - Notification data
    * @returns {boolean} - Success status
+   * @note The sent_at field is NOT updated to preserve notification delivery status.
+   *       Updating a notification's content should not reset whether it was sent.
    */
   async updateNotification(notificationData) {
     try {
@@ -187,6 +190,7 @@ class NotificationManager {
         message: data.message,
       });
 
+      // Note: sent_at is intentionally excluded to preserve delivery status
       const result = databaseService.update(
         'UPDATE notifications SET task_id = ?, time = ?, type = ?, message = ? WHERE id = ?',
         [data.task_id, data.time, data.type, data.message, data.id]
@@ -258,8 +262,12 @@ class NotificationManager {
       logger.debug(`Notification will trigger in ${Math.round(delay / 1000)} seconds`);
 
       // Schedule the notification
-      const timeoutId = setTimeout(() => {
-        this.sendNotification(notification);
+      const timeoutId = setTimeout(async () => {
+        try {
+          await this.sendNotification(notification);
+        } catch (error) {
+          logger.logError(error, `Error in scheduled notification ${notification.id}`);
+        }
         this.scheduledNotifications.delete(notification.id);
       }, delay);
 
@@ -295,8 +303,14 @@ class NotificationManager {
    * Send a notification
    * @param {Notification} notification - Notification instance
    */
-  sendNotification(notification) {
+  async sendNotification(notification) {
     try {
+      // Check if already sent to prevent duplicates
+      if (notification.sentAt) {
+        logger.info(`Notification ${notification.id} already sent at ${notification.sentAt.toISOString()}, skipping`);
+        return;
+      }
+
       // Get the task details to include in the notification
       const task = databaseService.queryOne('SELECT name, status FROM tasks WHERE id = ?', [
         notification.taskId,
@@ -352,8 +366,106 @@ class NotificationManager {
       }
 
       logger.info(`✅ Notification ${notification.id} sent: ${notification.message}`);
+
+      // Mark as sent in memory immediately to prevent duplicate sends, then persist to database
+      const now = new Date();
+      notification.sentAt = now;
+
+      try {
+        await this.markAsSent(notification.id, notification);
+      } catch (error) {
+        // Notification was already sent to user, but database update failed
+        // The in-memory update above prevents duplicate sends in current session
+        logger.logError(error, `Failed to mark notification ${notification.id} as sent in database (will retry on next load)`);
+      }
     } catch (error) {
       logger.logError(error, `Error sending notification ${notification.id}`);
+    }
+  }
+
+  /**
+   * Mark a notification as sent
+   * @param {string} id - Notification ID
+   * @param {Notification} notificationObj - Optional in-memory notification object to update
+   * @returns {Promise<{success: boolean, sentAt: Date|null}>} - Result with timestamp
+   */
+  async markAsSent(id, notificationObj = null) {
+    try {
+      const now = new Date().toISOString();
+      const result = databaseService.update('UPDATE notifications SET sent_at = ? WHERE id = ?', [now, id]);
+
+      if (result && result.changes > 0) {
+        // Update in-memory object if provided
+        if (notificationObj) {
+          notificationObj.sentAt = new Date(now);
+        }
+        logger.info(`✅ Notification ${id} marked as sent at ${now}`);
+        return { success: true, sentAt: new Date(now) };
+      }
+      return { success: false, sentAt: null };
+    } catch (error) {
+      logger.logError(error, `Error marking notification ${id} as sent`);
+      return { success: false, sentAt: null };
+    }
+  }
+
+  /**
+   * Reschedule all pending notifications after clock change or system wake
+   * @returns {Object} - Rescheduling statistics
+   */
+  async rescheduleAllPending() {
+    try {
+      logger.info('Rescheduling all pending notifications after system event');
+
+      // Clear all existing timeouts
+      for (const [, timeoutId] of this.scheduledNotifications) {
+        clearTimeout(timeoutId);
+      }
+      this.scheduledNotifications.clear();
+
+      // Reload and reschedule all unsent notifications
+      const notifications = await this.getUpcomingNotifications();
+      notifications.forEach((notification) => {
+        this.scheduleNotification(notification);
+      });
+
+      logger.info(`✅ Rescheduled ${notifications.length} pending notifications`);
+      return { success: true, count: notifications.length };
+    } catch (error) {
+      logger.logError(error, 'Error rescheduling notifications');
+      return { success: false, count: 0 };
+    }
+  }
+
+  /**
+   * Clean up old sent notifications (optional maintenance task)
+   * @param {number} daysToKeep - Number of days to keep sent notifications (default: 30)
+   * @returns {boolean} - Success status
+   * @example
+   * // Clean notifications older than 30 days
+   * await notificationService.cleanupOldSentNotifications();
+   * @example
+   * // Clean notifications older than 90 days
+   * await notificationService.cleanupOldSentNotifications(90);
+   */
+  async cleanupOldSentNotifications(daysToKeep = 30) {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+
+      const result = databaseService.delete(
+        'DELETE FROM notifications WHERE sent_at IS NOT NULL AND sent_at < ?',
+        [cutoffDate.toISOString()]
+      );
+
+      if (result && result.changes > 0) {
+        logger.info(`✅ Cleaned up ${result.changes} old sent notifications`);
+        return true;
+      }
+      return true; // No old notifications to clean up
+    } catch (error) {
+      logger.logError(error, 'Error cleaning up old notifications');
+      return false;
     }
   }
 
