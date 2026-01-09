@@ -2,11 +2,8 @@
  * AI function handlers for task, project, and notification operations.
  */
 
-import Project from '../shared/models/Project.js';
-import projectManager from './services/project.js';
 import taskManager from './services/task.js';
 import notificationService from './services/notification.js';
-import { Notification, TYPE } from '../shared/models/Notification.js';
 import logger from './logger.js';
 import { isDebugLoggingEnabled, shouldLogRaw } from '../shared/utils/loggingConfig.js';
 import { summarizeTasks, summarizeNotifications } from '../shared/utils/loggingSanitizers.js';
@@ -15,154 +12,21 @@ import { summarizeTasks, summarizeNotifications } from '../shared/utils/loggingS
 import {
   formatToYYYYMMDD,
   formatDateToYYYYMMDDLocal,
-  parseToISODateTime,
   formatRecurrenceRuleForResponse,
   formatTaskForAI,
   formatNotificationForAI
 } from './ai-function-handlers/utils/dateTimeParsers.js';
 import {
-  resolveProjectId,
   resolveProjectIds
 } from './ai-function-handlers/utils/projectResolvers.js';
 import {
-  buildTaskResponse,
-  buildProjectResponse,
-  buildNotificationResponse,
-  buildRecurrenceResponse,
-  buildErrorResponse,
-  buildQueryResponse
-} from './ai-function-handlers/utils/responseFormatters.js';
-import {
-  processTaskArguments,
-  validateFrequency,
-  validateNotificationType
+  validateFrequency
 } from './ai-function-handlers/utils/argumentParsers.js';
 
-/**
- * Handle addTask function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleAddTask(args, baseResult) {
-  const processResult = await processTaskArguments(args, baseResult);
-  if (processResult) return processResult;
-
-  const task = await taskManager.addTask(args);
-  return {
-    ...baseResult,
-    success: true,
-    task,
-    taskId: task.id,
-    message: `Task "${args.name}" has been created with ID: ${task.id}.`
-  };
-}
-
-/**
- * Handle updateTask function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleUpdateTask(args, baseResult) {
-  // Handle dueDate as YYYY-MM-DD string format
-  if (args.dueDate && typeof args.dueDate === 'string') {
-    args.dueDate = formatToYYYYMMDD(args.dueDate);
-  }
-
-  // Convert local time string to ISO format if provided for plannedTime
-  if (args.plannedTime && typeof args.plannedTime === 'string') {
-    const isoDateTime = parseToISODateTime(args.plannedTime, 'planned time');
-    if (isoDateTime) {
-      args.plannedTime = isoDateTime;
-    } else {
-      return {
-        ...baseResult,
-        success: false,
-        error: `Could not parse date/time from: ${args.plannedTime}`,
-        message: `I couldn't update the task because the planned time format is invalid: ${args.plannedTime}`
-      };
-    }
-  }
-
-  await taskManager.updateTask(args);
-  return {
-    ...baseResult,
-    success: true,
-    taskId: args.id,
-    message: `Task "${args.id}" has been updated.`
-  };
-}
-
-/**
- * Handle deleteTask function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleDeleteTask(args, baseResult) {
-  const deleteResult = await taskManager.deleteTask(args.id);
-  if (!deleteResult) {
-    return {
-      ...baseResult,
-      success: false,
-      taskId: args.id,
-      message: `Task with ID ${args.id} not found or couldn't be deleted.`
-    };
-  }
-  return {
-    ...baseResult,
-    success: true,
-    taskId: args.id,
-    message: `Task with ID ${args.id} has been deleted.`
-  };
-}
-
-/**
- * Handle getTasks function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleGetTasks(args, baseResult) {
-  // Legacy function for backward compatibility
-  let tasks = await taskManager.getRecentTasks();
-
-  if (args.projectId) {
-    // Resolve project ID if provided
-    const resolvedProjectId = await resolveProjectId(args.projectId);
-    if (resolvedProjectId) {
-      args.projectId = resolvedProjectId;
-    } else {
-      return {
-        ...baseResult,
-        success: false,
-        error: `Project "${args.projectId}" not found`,
-        message: `I couldn't find a project named "${args.projectId}". Please specify a valid project name or ID.`
-      };
-    }
-
-    tasks = tasks.filter(task => task.projectId === args.projectId);
-  }
-
-  if (args.status) {
-    tasks = tasks.filter(task => task.status === args.status);
-  }
-
-  if (args.priority) {
-    tasks = tasks.filter(task => task.priority === args.priority);
-  }
-
-  return {
-    ...baseResult,
-    success: true,
-    tasks,
-    taskIds: tasks.map(task => task.id),
-    message: tasks.length > 0
-      ? `Found ${tasks.length} tasks.`
-      : 'No tasks found matching your criteria.'
-  };
-}
+// Import extracted domain handlers from ai-function-handlers
+import * as projectHandlers from './ai-function-handlers/projectHandlers.js';
+import * as taskHandlers from './ai-function-handlers/taskHandlers.js';
+import * as notificationHandlers from './ai-function-handlers/notificationHandlers.js';
 
 /**
  * Handle queryTasks function call
@@ -344,266 +208,6 @@ async function handleQueryTasks(args, baseResult) {
     message: formattedTasks.length > 0
       ? `Found ${formattedTasks.length} tasks${filteringApplied ? ' matching your criteria' : ''}.${formattedTasks.length === limit ? ' (Result limit reached)' : ''}`
       : 'No tasks found matching your criteria.'
-  };
-}
-
-/**
- * Handle planDay function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handlePlanDay(args, baseResult) {
-  const plannedTasks = await taskManager.planDay(args);
-  const taskIds = plannedTasks.map(task => task.id);
-
-  return {
-    ...baseResult,
-    success: true,
-    plannedTasks,
-    taskIds,
-    message: `Day planned with ${plannedTasks.length} tasks.`
-  };
-}
-
-/**
- * Handle addProject function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleAddProject(args, baseResult) {
-  const project = new Project(args);
-  await projectManager.addProject(project);
-  return {
-    ...baseResult,
-    success: true,
-    project: project,
-    projectId: project.id,
-    message: `Project "${args.name}" has been created with ID: ${project.id}.`
-  };
-}
-
-/**
- * Handle getProjects function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleGetProjects(args, baseResult) {
-  const projects = await projectManager.getProjects();
-  const projectIds = projects.map(project => project.id);
-  return {
-    ...baseResult,
-    success: true,
-    projects,
-    projectIds,
-    message: `Found ${projects.length} projects.`
-  };
-}
-
-/**
- * Handle updateProject function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleUpdateProject(args, baseResult) {
-  const updatedProject = new Project(args);
-  const updateProjectResult = await projectManager.updateProject(updatedProject);
-  return {
-    ...baseResult,
-    success: updateProjectResult,
-    projectId: updatedProject.id,
-    message: updateProjectResult
-      ? `Project "${args.name}" (ID: ${updatedProject.id}) has been updated.`
-      : `Failed to update project "${args.name}" (ID: ${updatedProject.id}).`
-  };
-}
-
-/**
- * Handle deleteProject function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleDeleteProject(args, baseResult) {
-  const deleteProjectResult = await projectManager.deleteProject(args.id);
-  return {
-    ...baseResult,
-    success: deleteProjectResult,
-    projectId: args.id,
-    message: deleteProjectResult
-      ? `Project with ID ${args.id} has been deleted.`
-      : `Failed to delete project with ID ${args.id}.`
-  };
-}
-
-/**
- * Handle addNotification function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleAddNotification(args, baseResult) {
-  // Convert local time string to ISO format if provided
-  if (args.time && typeof args.time === 'string') {
-    const isoDateTime = parseToISODateTime(args.time, 'notification time');
-    if (isoDateTime) {
-      args.time = isoDateTime;
-    } else {
-      return {
-        ...baseResult,
-        success: false,
-        error: `Invalid date format for notification time: ${args.time}`,
-        message: `I couldn't create the notification because the time format is invalid.`
-      };
-    }
-  }
-
-  // Validate notification type
-  if (!validateNotificationType(args.type)) {
-    return {
-      ...baseResult,
-      success: false,
-      error: `Invalid notification type: ${args.type}`,
-      message: `I couldn't create the notification because "${args.type}" is not a valid notification type. Valid types are: ${Object.values(TYPE).join(', ')}`
-    };
-  }
-
-  // Create notification
-  const notification = new Notification({
-    taskId: args.taskId,
-    time: args.time,
-    type: args.type,
-    message: args.message || ''
-  });
-
-  const addResult = await notificationService.addNotification(notification);
-  return {
-    ...baseResult,
-    success: addResult,
-    notification,
-    notificationId: notification.id,
-    message: addResult
-      ? `Notification has been created for task ${args.taskId}.`
-      : `Failed to create notification for task ${args.taskId}.`
-  };
-}
-
-/**
- * Handle updateNotification function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleUpdateNotification(args, baseResult) {
-  // Convert local time string to ISO format if provided
-  if (args.time && typeof args.time === 'string') {
-    const isoDateTime = parseToISODateTime(args.time, 'notification time');
-    if (isoDateTime) {
-      args.time = isoDateTime;
-    } else {
-      return {
-        ...baseResult,
-        success: false,
-        error: `Invalid date format for notification: ${args.time}`,
-        message: `I couldn't update the notification because the time format is invalid.`
-      };
-    }
-  }
-
-  // Validate notification type if provided
-  if (args.type && !validateNotificationType(args.type)) {
-    return {
-      ...baseResult,
-      success: false,
-      error: `Invalid notification type: ${args.type}`,
-      message: `I couldn't update the notification because "${args.type}" is not a valid notification type. Valid types are: ${Object.values(TYPE).join(', ')}`
-    };
-  }
-
-  const updateNotificationResult = await notificationService.updateNotification(args);
-  return {
-    ...baseResult,
-    success: updateNotificationResult,
-    notificationId: args.id,
-    message: updateNotificationResult
-      ? `Notification with ID ${args.id} has been updated.`
-      : `Failed to update notification with ID ${args.id}.`
-  };
-}
-
-/**
- * Handle deleteNotification function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleDeleteNotification(args, baseResult) {
-  const deleteNotificationResult = await notificationService.deleteNotification(args.id);
-  return {
-    ...baseResult,
-    success: deleteNotificationResult,
-    notificationId: args.id,
-    message: deleteNotificationResult
-      ? `Notification with ID ${args.id} has been deleted.`
-      : `Failed to delete notification with ID ${args.id}.`
-  };
-}
-
-/**
- * Handle getNotifications function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleGetNotifications(args, baseResult) {
-  const notifications = await notificationService.getNotifications(args);
-  const formattedNotifications = notifications.map(notification => ({
-    id: notification.id,
-    title: notification.title,
-    message: notification.message,
-    time: notification.time,
-    type: notification.type,
-    isRead: notification.isRead,
-    createdAt: notification.createdAt,
-    updatedAt: notification.updatedAt
-  }));
-
-  const notifFilteringApplied = Object.keys(args).some(key =>
-    ['ids', 'titleContains', 'messageContains', 'type', 'isRead', 'timeBefore', 'timeAfter'].includes(key)
-  );
-
-  const notificationLimit = args.limit || 50;
-
-  return {
-    ...baseResult,
-    success: true,
-    notifications: formattedNotifications,
-    notificationIds: formattedNotifications.map(notification => notification.id),
-    message: formattedNotifications.length > 0
-      ? `Found ${formattedNotifications.length} notifications${notifFilteringApplied ? ' matching your criteria' : ''}.${formattedNotifications.length === notificationLimit ? ' (Result limit reached)' : ''}`
-      : 'No notifications found matching your criteria.'
-  };
-}
-
-/**
- * Handle getNotificationsByTask function call
- * @param {Object} args - Function arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Function result
- */
-async function handleGetNotificationsByTask(args, baseResult) {
-  const notifications = await notificationService.getNotificationsByTask(args.taskId);
-  return {
-    ...baseResult,
-    success: true,
-    notifications,
-    notificationIds: notifications.map(notification => notification.id),
-    message: notifications.length > 0
-      ? `Found ${notifications.length} notifications for task ${args.taskId}.`
-      : `No notifications found for task ${args.taskId}.`
   };
 }
 
@@ -996,35 +600,35 @@ async function handleGetTaskRecurrence(args, baseResult) {
 export async function handleFunctionCall(functionName, args, baseResult) {
   switch (functionName) {
     case 'addTask':
-      return handleAddTask(args, baseResult);
+      return taskHandlers.handleAddTask(args, baseResult);
     case 'updateTask':
-      return handleUpdateTask(args, baseResult);
+      return taskHandlers.handleUpdateTask(args, baseResult);
     case 'deleteTask':
-      return handleDeleteTask(args, baseResult);
+      return taskHandlers.handleDeleteTask(args, baseResult);
     case 'getTasks':
-      return handleGetTasks(args, baseResult);
+      return taskHandlers.handleGetTasks(args, baseResult);
     case 'queryTasks':
       return handleQueryTasks(args, baseResult);
     case 'planDay':
-      return handlePlanDay(args, baseResult);
+      return taskHandlers.handlePlanDay(args, baseResult);
     case 'addProject':
-      return handleAddProject(args, baseResult);
+      return projectHandlers.handleAddProject(args, baseResult);
     case 'getProjects':
-      return handleGetProjects(args, baseResult);
+      return projectHandlers.handleGetProjects(args, baseResult);
     case 'updateProject':
-      return handleUpdateProject(args, baseResult);
+      return projectHandlers.handleUpdateProject(args, baseResult);
     case 'deleteProject':
-      return handleDeleteProject(args, baseResult);
+      return projectHandlers.handleDeleteProject(args, baseResult);
     case 'addNotification':
-      return handleAddNotification(args, baseResult);
+      return notificationHandlers.handleAddNotification(args, baseResult);
     case 'updateNotification':
-      return handleUpdateNotification(args, baseResult);
+      return notificationHandlers.handleUpdateNotification(args, baseResult);
     case 'deleteNotification':
-      return handleDeleteNotification(args, baseResult);
+      return notificationHandlers.handleDeleteNotification(args, baseResult);
     case 'getNotifications':
-      return handleGetNotifications(args, baseResult);
+      return notificationHandlers.handleGetNotifications(args, baseResult);
     case 'getNotificationsByTask':
-      return handleGetNotificationsByTask(args, baseResult);
+      return notificationHandlers.handleGetNotificationsByTask(args, baseResult);
     case 'queryNotifications':
       return handleQueryNotifications(args, baseResult);
     case 'setTaskRecurrence':
