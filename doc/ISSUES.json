@@ -205,21 +205,6 @@
       "notes": "COMPLETED: Removed _deleteProjectTasks method (37 lines) and _finalizeProjectDeletion method (16 lines) from project.js. Simplified deleteProject to rely on CASCADE (reduced from 6 steps to 3 steps). Removed notification deletion loop (11 lines) and recurrence rules deletion loop (22 lines) from task.js deleteTask method. Total code reduction: ~85 lines. Performance improvement: ~98% reduction in database queries for typical deletions (e.g., 52 queries → 1 query for project with 10 tasks). All 428 tests pass."
     },
     {
-      "id": "BUG-260106-029",
-      "type": "bug",
-      "epic": "Architecture",
-      "title": "Resolve circular dependency between project and task services",
-      "description": "There is a circular dependency risk between project.js and task.js services that could cause runtime errors or initialization issues.",
-      "acceptance_criteria": [
-        "Analyze and document the dependency chain between project and task services",
-        "Refactor to eliminate circular dependencies",
-        "Consider introducing a shared interface or event-driven pattern",
-        "Add tests to prevent regression of circular dependencies",
-        "Document proper pattern for cross-service operations"
-      ],
-      "passes": false
-    },
-    {
       "id": "TASK-260106-030",
       "type": "task",
       "epic": "UI Components",
