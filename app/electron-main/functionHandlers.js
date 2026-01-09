@@ -10,184 +10,33 @@ import { Notification, TYPE } from '../shared/models/Notification.js';
 import logger from './logger.js';
 import { isDebugLoggingEnabled, shouldLogRaw } from '../shared/utils/loggingConfig.js';
 import { summarizeTasks, summarizeNotifications } from '../shared/utils/loggingSanitizers.js';
-import { coerceDateOnly, formatDateOnlyLocal } from '../shared/utils/dateTime.js';
 
-/**
- * Utility function to resolve a project ID from a name or ID
- * @param {string} projectId - Project ID or name
- * @returns {Promise<string|null>} - Resolved project ID or null if not found
- */
-async function resolveProjectId(projectId) {
-  // If it's already a UUID format (contains hyphens), return it as is
-  if (typeof projectId === 'string' && projectId.includes('-')) {
-    return projectId;
-  }
-  
-  // It's likely a project name, look up the project by name
-  logger.info(`Looking up project ID for project name: ${projectId}`);
-  const projects = await projectManager.getProjects();
-  const project = projects.find(p => p.name.toLowerCase() === projectId.toLowerCase());
-  
-  if (project) {
-    logger.info(`Found project ID ${project.id} for name: ${projectId}`);
-    return project.id;
-  }
-  
-  logger.info(`No project found for name: ${projectId}`);
-  return null;
-}
-
-/**
- * Utility function to format a date string to YYYY-MM-DD format
- * @param {string} dateString - Date string to format
- * @returns {string|null} - Formatted date string or null if invalid
- */
-function formatToYYYYMMDD(dateString) {
-  try {
-    logger.info(`Original date input: ${dateString}`);
-
-    const formatted = coerceDateOnly(dateString);
-    if (!formatted) {
-      logger.info(`Invalid date format: ${dateString}`);
-      return null;
-    }
-
-    logger.info(`Normalized date to YYYY-MM-DD (local calendar): ${formatted}`);
-    return formatted;
-  } catch (error) {
-    logger.logError(error, 'Error parsing date');
-    return null;
-  }
-}
-
-/**
- * Utility function to format a Date to YYYY-MM-DD using local calendar values
- * @param {Date} dateValue - Date value to format
- * @returns {string|null} - Formatted date string or null if invalid
- */
-function formatDateToYYYYMMDDLocal(dateValue) {
-  return formatDateOnlyLocal(dateValue);
-}
-
-/**
- * Utility function to format a recurrence rule for AI responses
- * @param {Object} rule - Recurrence rule instance
- * @returns {Object|null} - Formatted recurrence rule or null if invalid
- */
-function formatRecurrenceRuleForResponse(rule) {
-  if (!rule) {
-    return null;
-  }
-
-  let endDate = null;
-  if (rule.endDate instanceof Date) {
-    endDate = formatDateToYYYYMMDDLocal(rule.endDate);
-  } else if (typeof rule.endDate === 'string') {
-    endDate = formatToYYYYMMDD(rule.endDate);
-  }
-
-  return {
-    taskId: rule.taskId || rule.task_id,
-    frequency: rule.frequency,
-    interval: rule.interval,
-    endDate,
-    count: rule.count ?? null
-  };
-}
-
-/**
- * Utility function to parse a date-time string to ISO format
- * @param {string} timeString - Date-time string to parse
- * @param {string} context - Context for logging
- * @returns {string|null} - Parsed date-time in ISO format or null if invalid
- */
-function parseToISODateTime(timeString, context = 'date-time') {
-  try {
-    // Try parsing as ISO first to see if it's already in ISO format
-    let parsedTime = new Date(timeString);
-    
-    // If invalid or looks like a local date format, try parsing it as a local date
-    if (isNaN(parsedTime) || !timeString.includes('T')) {
-      // This is likely a local date format (e.g., "May 31, 2023 15:30" or "5/31/2023 15:30")
-      logger.info(`Converting local date format for ${context}: ${timeString}`);
-      
-      // Try to parse date using more flexible approach
-      parsedTime = new Date(timeString);
-      
-      // If still invalid, try some common formats
-      if (isNaN(parsedTime)) {
-        logger.info(`Failed to parse date directly, attempting structured parsing`);
-        // Try to extract date and time components from common formats
-        const dateTimeParts = timeString.split(/,\s*| /);
-        if (dateTimeParts.length >= 2) {
-          // Last part is likely the time
-          const timePart = dateTimeParts[dateTimeParts.length - 1];
-          // Join the rest as the date part
-          const datePart = dateTimeParts.slice(0, dateTimeParts.length - 1).join(' ');
-          parsedTime = new Date(`${datePart} ${timePart}`);
-        }
-      }
-    }
-
-    if (isNaN(parsedTime)) {
-      logger.info(`Failed to parse ${context}: ${timeString}`);
-      return null;
-    }
-
-    // Convert to ISO string
-    const isoString = parsedTime.toISOString();
-    logger.info(`Parsed ${context} from "${timeString}" to ISO: ${isoString}`);
-    return isoString;
-  } catch (error) {
-    logger.logError(error, `Error parsing ${context}`);
-    return null;
-  }
-}
-
-/**
- * Process common task arguments (dates, project resolution)
- * @param {Object} args - Task arguments
- * @param {Object} baseResult - Base result object
- * @returns {Promise<Object>} - Processed arguments or error result
- */
-async function processTaskArguments(args, baseResult) {
-  // Resolve project ID if provided
-  if (args.projectId && typeof args.projectId === 'string') {
-    const resolvedProjectId = await resolveProjectId(args.projectId);
-    if (resolvedProjectId) {
-      args.projectId = resolvedProjectId;
-    } else {
-      return {
-        ...baseResult,
-        success: false,
-        error: `Project "${args.projectId}" not found`,
-        message: `I couldn't find a project named "${args.projectId}". Please specify a valid project name or ID.`
-      };
-    }
-  }
-
-  // Handle dueDate as YYYY-MM-DD string format
-  if (args.dueDate && typeof args.dueDate === 'string') {
-    args.dueDate = formatToYYYYMMDD(args.dueDate);
-  }
-
-  // Convert local time string to ISO format if provided for plannedTime
-  if (args.plannedTime && typeof args.plannedTime === 'string') {
-    const isoDateTime = parseToISODateTime(args.plannedTime, 'planned time');
-    if (isoDateTime) {
-      args.plannedTime = isoDateTime;
-    } else {
-      return {
-        ...baseResult,
-        success: false,
-        error: `Could not parse date/time from: ${args.plannedTime}`,
-        message: `I couldn't process the planned time because the format is invalid: ${args.plannedTime}`
-      };
-    }
-  }
-
-  return null; // No error, processing successful
-}
+// Import extracted utilities from ai-function-handlers
+import {
+  formatToYYYYMMDD,
+  formatDateToYYYYMMDDLocal,
+  parseToISODateTime,
+  formatRecurrenceRuleForResponse,
+  formatTaskForAI,
+  formatNotificationForAI
+} from './ai-function-handlers/utils/dateTimeParsers.js';
+import {
+  resolveProjectId,
+  resolveProjectIds
+} from './ai-function-handlers/utils/projectResolvers.js';
+import {
+  buildTaskResponse,
+  buildProjectResponse,
+  buildNotificationResponse,
+  buildRecurrenceResponse,
+  buildErrorResponse,
+  buildQueryResponse
+} from './ai-function-handlers/utils/responseFormatters.js';
+import {
+  processTaskArguments,
+  validateFrequency,
+  validateNotificationType
+} from './ai-function-handlers/utils/argumentParsers.js';
 
 /**
  * Handle addTask function call
@@ -366,13 +215,7 @@ async function handleQueryTasks(args, baseResult) {
   // Filter by project IDs
   if (args.projectIds && Array.isArray(args.projectIds) && args.projectIds.length > 0) {
     // Convert project names to IDs if needed
-    const projectIds = [];
-    for (const projectId of args.projectIds) {
-      const resolvedId = await resolveProjectId(projectId);
-      if (resolvedId) {
-        projectIds.push(resolvedId);
-      }
-    }
+    const projectIds = await resolveProjectIds(args.projectIds);
 
     filteredTasks = filteredTasks.filter(task => projectIds.includes(task.projectId));
     filteringApplied = true;
@@ -491,31 +334,7 @@ async function handleQueryTasks(args, baseResult) {
   }
 
   // Format tasks consistently for AI readability
-  const formattedTasks = filteredTasks.map(task => {
-    const formattedTask = { ...task };
-
-    // Ensure dueDate is consistently in YYYY-MM-DD format
-    if (formattedTask.dueDate) {
-      // If it has time component, extract just the date part
-      if (typeof formattedTask.dueDate === 'string' && formattedTask.dueDate.includes('T')) {
-        formattedTask.dueDate = formattedTask.dueDate.split('T')[0];
-      } else if (formattedTask.dueDate instanceof Date) {
-        // Convert Date object to YYYY-MM-DD string
-        formattedTask.dueDate = formatDateOnlyLocal(formattedTask.dueDate);
-      }
-    }
-
-    // Convert plannedTime to user-friendly local time string if it exists
-    if (formattedTask.plannedTime) {
-      const plannedTime = new Date(formattedTask.plannedTime);
-      // Format with date and time components for better readability
-      const dateOptions = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
-      const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
-      formattedTask.plannedTime = `${plannedTime.toLocaleDateString(undefined, dateOptions)} at ${plannedTime.toLocaleTimeString(undefined, timeOptions)}`;
-    }
-
-    return formattedTask;
-  });
+  const formattedTasks = filteredTasks.map(task => formatTaskForAI(task));
 
   return {
     ...baseResult,
@@ -643,7 +462,7 @@ async function handleAddNotification(args, baseResult) {
   }
 
   // Validate notification type
-  if (!Object.values(TYPE).includes(args.type)) {
+  if (!validateNotificationType(args.type)) {
     return {
       ...baseResult,
       success: false,
@@ -695,7 +514,7 @@ async function handleUpdateNotification(args, baseResult) {
   }
 
   // Validate notification type if provided
-  if (args.type && !Object.values(TYPE).includes(args.type)) {
+  if (args.type && !validateNotificationType(args.type)) {
     return {
       ...baseResult,
       success: false,
@@ -909,17 +728,7 @@ async function handleQueryNotifications(args, baseResult) {
   }
 
   // Convert times to local time format for AI readability
-  const formattedNotifications = filteredNotifications.map(notification => {
-    const formattedNotification = { ...notification };
-
-    // Convert notification time to local time string if it exists
-    if (formattedNotification.time) {
-      const time = new Date(formattedNotification.time);
-      formattedNotification.time = time.toLocaleString();
-    }
-
-    return formattedNotification;
-  });
+  const formattedNotifications = filteredNotifications.map(notification => formatNotificationForAI(notification));
 
   return {
     ...baseResult,
@@ -952,13 +761,12 @@ async function handleSetTaskRecurrence(args, baseResult) {
   }
 
   // Validate frequency enum
-  const validFrequencies = ['daily', 'weekly', 'monthly', 'yearly'];
-  if (!validFrequencies.includes(args.frequency)) {
+  if (!validateFrequency(args.frequency)) {
     return {
       ...baseResult,
       success: false,
       error: `Invalid frequency: ${args.frequency}`,
-      message: `I couldn't set recurrence because "${args.frequency}" is not a valid frequency. Valid options are: ${validFrequencies.join(', ')}`
+      message: `I couldn't set recurrence because "${args.frequency}" is not a valid frequency. Valid options are: daily, weekly, monthly, yearly`
     };
   }
 
