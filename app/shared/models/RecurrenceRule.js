@@ -18,16 +18,72 @@ class RecurrenceRule {
    * @param {Object} data - RecurrenceRule data
    */
   constructor(data = {}) {
+    this._initProperties(data);
+  }
+
+  /**
+   * Initialize all properties from data
+   * @param {Object} data - RecurrenceRule data
+   * @private
+   */
+  _initProperties(data) {
     this.id = data.id || uuidv4();
-    // Support both taskId and task_id for flexibility
-    this.taskId = data.taskId || data.task_id || '';
+    this.taskId = this._resolveTaskId(data);
     this.frequency = data.frequency || FREQUENCY.DAILY;
-    this.interval = data.interval !== undefined ? data.interval : 1;
-    // Handle both endDate and end_date - convert string dates to Date objects
-    this.endDate = this._parseDate(data.endDate) || this._parseDate(data.end_date) || null;
-    this.count = data.count !== undefined ? data.count : null;
-    // Handle both createdAt and created_at
-    this.createdAt = data.createdAt || (data.created_at ? new Date(data.created_at) : new Date());
+    this.interval = this._resolveInterval(data);
+    this.endDate = this._resolveEndDate(data);
+    this.count = this._resolveCount(data);
+    this.createdAt = this._resolveCreatedAt(data);
+  }
+
+  /**
+   * Resolve task ID from data (handles camelCase and snake_case)
+   * @param {Object} data - RecurrenceRule data
+   * @returns {string} - Task ID or empty string
+   * @private
+   */
+  _resolveTaskId(data) {
+    return data.taskId || data.task_id || '';
+  }
+
+  /**
+   * Resolve interval from data
+   * @param {Object} data - RecurrenceRule data
+   * @returns {number} - Interval or 1
+   * @private
+   */
+  _resolveInterval(data) {
+    return data.interval !== undefined ? data.interval : 1;
+  }
+
+  /**
+   * Resolve end date from data
+   * @param {Object} data - RecurrenceRule data
+   * @returns {Date|null} - Parsed end date or null
+   * @private
+   */
+  _resolveEndDate(data) {
+    return this._parseDate(data.endDate) || this._parseDate(data.end_date) || null;
+  }
+
+  /**
+   * Resolve count from data
+   * @param {Object} data - RecurrenceRule data
+   * @returns {number|null} - Count or null
+   * @private
+   */
+  _resolveCount(data) {
+    return data.count !== undefined ? data.count : null;
+  }
+
+  /**
+   * Resolve createdAt from data
+   * @param {Object} data - RecurrenceRule data
+   * @returns {Date} - Created at date
+   * @private
+   */
+  _resolveCreatedAt(data) {
+    return data.createdAt || (data.created_at ? new Date(data.created_at) : new Date());
   }
 
   /**

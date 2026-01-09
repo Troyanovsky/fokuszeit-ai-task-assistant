@@ -45,39 +45,99 @@ class Task {
     this.id = data.id || uuidv4();
     this.name = data.name || '';
     this.description = data.description || '';
-    this.duration = data.duration !== undefined ? data.duration : null;
-    this.projectId = data.project_id || data.projectId || '';
-    this.dependencies = data.dependencies ? this.parseDependencies(data.dependencies) : [];
+    this.duration = this._initDuration(data.duration);
+    this.projectId = this._initProjectId(data.project_id || data.projectId);
+    this.dependencies = this._initDependencies(data.dependencies);
     this.status = data.status || STATUS.PLANNING;
-    this.labels = data.labels ? this.parseLabels(data.labels) : [];
+    this.labels = this._initLabels(data.labels);
     this.priority = data.priority || PRIORITY.MEDIUM;
-    this.createdAt = data.created_at ? new Date(data.created_at) : new Date();
-    this.updatedAt = data.updated_at ? new Date(data.updated_at) : new Date();
-
-    this._setDueDate(data.dueDate || data.due_date);
-    this._setPlannedTime(data.plannedTime || data.planned_time);
+    this.createdAt = this._initCreatedAt(data.created_at);
+    this.updatedAt = this._initUpdatedAt(data.updated_at);
+    this.dueDate = this._initDueDate(data.dueDate || data.due_date);
+    this.plannedTime = this._initPlannedTime(data.plannedTime || data.planned_time);
   }
 
   /**
-   * Parses and sets the dueDate property.
-   * @param {string|Date|null|undefined} dateValue - The value to parse for dueDate.
+   * Initialize duration from data
+   * @param {*} durationValue - Duration value from data
+   * @returns {number|null} - Duration or null
    * @private
    */
-  _setDueDate(dateValue) {
-    this.dueDate = coerceDateOnly(dateValue);
+  _initDuration(durationValue) {
+    return durationValue !== undefined ? durationValue : null;
   }
 
   /**
-   * Parses and sets the plannedTime property.
-   * @param {string|Date|null|undefined} timeValue - The value to parse for plannedTime.
+   * Initialize project ID from data
+   * @param {string} projectIdValue - Project ID from data
+   * @returns {string} - Project ID or empty string
    * @private
    */
-  _setPlannedTime(timeValue) {
+  _initProjectId(projectIdValue) {
+    return projectIdValue || '';
+  }
+
+  /**
+   * Initialize dependencies from data
+   * @param {*} dependenciesValue - Dependencies from data
+   * @returns {Array} - Dependencies array
+   * @private
+   */
+  _initDependencies(dependenciesValue) {
+    return dependenciesValue ? this.parseDependencies(dependenciesValue) : [];
+  }
+
+  /**
+   * Initialize labels from data
+   * @param {*} labelsValue - Labels from data
+   * @returns {Array} - Labels array
+   * @private
+   */
+  _initLabels(labelsValue) {
+    return labelsValue ? this.parseLabels(labelsValue) : [];
+  }
+
+  /**
+   * Initialize createdAt from data
+   * @param {string} createdAtValue - Created at timestamp from data
+   * @returns {Date} - Created at date
+   * @private
+   */
+  _initCreatedAt(createdAtValue) {
+    return createdAtValue ? new Date(createdAtValue) : new Date();
+  }
+
+  /**
+   * Initialize updatedAt from data
+   * @param {string} updatedAtValue - Updated at timestamp from data
+   * @returns {Date} - Updated at date
+   * @private
+   */
+  _initUpdatedAt(updatedAtValue) {
+    return updatedAtValue ? new Date(updatedAtValue) : new Date();
+  }
+
+  /**
+   * Initialize dueDate from data
+   * @param {*} dateValue - Due date from data
+   * @returns {string|null} - Due date in YYYY-MM-DD format or null
+   * @private
+   */
+  _initDueDate(dateValue) {
+    return coerceDateOnly(dateValue);
+  }
+
+  /**
+   * Initialize plannedTime from data
+   * @param {*} timeValue - Planned time from data
+   * @returns {Date|null} - Planned time or null
+   * @private
+   */
+  _initPlannedTime(timeValue) {
     if (timeValue) {
-      this.plannedTime = typeof timeValue === 'string' ? new Date(timeValue) : timeValue;
-    } else {
-      this.plannedTime = null;
+      return typeof timeValue === 'string' ? new Date(timeValue) : timeValue;
     }
+    return null;
   }
 
   /**
@@ -117,31 +177,77 @@ class Task {
    * @returns {boolean} - Validation result
    */
   validate() {
-    // Existing validation: name
+    return (
+      this._validateName() &&
+      this._validateProjectId() &&
+      this._validateStatus() &&
+      this._validatePriority() &&
+      this._validateDueDate() &&
+      this._validatePlannedTime() &&
+      this._validateDuration() &&
+      this._validateLabels() &&
+      this._validateDependencies()
+    );
+  }
+
+  /**
+   * Validate task name
+   * @returns {boolean} - Validation result
+   * @private
+   */
+  _validateName() {
     if (!this.name || this.name.trim() === '') {
       logger.error('Task validation failed: name is required');
       return false;
     }
+    return true;
+  }
 
-    // Existing validation: projectId
+  /**
+   * Validate project ID
+   * @returns {boolean} - Validation result
+   * @private
+   */
+  _validateProjectId() {
     if (!this.projectId) {
       logger.error('Task validation failed: projectId is required');
       return false;
     }
+    return true;
+  }
 
-    // Existing validation: status
+  /**
+   * Validate task status
+   * @returns {boolean} - Validation result
+   * @private
+   */
+  _validateStatus() {
     if (!Object.values(STATUS).includes(this.status)) {
       logger.error(`Task validation failed: invalid status "${this.status}"`);
       return false;
     }
+    return true;
+  }
 
-    // Existing validation: priority
+  /**
+   * Validate task priority
+   * @returns {boolean} - Validation result
+   * @private
+   */
+  _validatePriority() {
     if (!Object.values(PRIORITY).includes(this.priority)) {
       logger.error(`Task validation failed: invalid priority "${this.priority}"`);
       return false;
     }
+    return true;
+  }
 
-    // NEW: dueDate format validation (YYYY-MM-DD or null)
+  /**
+   * Validate due date format and range
+   * @returns {boolean} - Validation result
+   * @private
+   */
+  _validateDueDate() {
     if (this.dueDate !== null) {
       if (typeof this.dueDate !== 'string') {
         logger.error(`Task validation failed: dueDate must be YYYY-MM-DD string or null, got ${typeof this.dueDate}`);
@@ -152,9 +258,21 @@ class Task {
         logger.error(`Task validation failed: dueDate must be YYYY-MM-DD format, got "${this.dueDate}"`);
         return false;
       }
+      const createdAtDateOnly = coerceDateOnly(this.createdAt);
+      if (createdAtDateOnly && this.dueDate < createdAtDateOnly) {
+        logger.error(`Task validation failed: dueDate "${this.dueDate}" must be >= createdAt "${createdAtDateOnly}"`);
+        return false;
+      }
     }
+    return true;
+  }
 
-    // NEW: plannedTime format validation (ISO 8601 Date object or null)
+  /**
+   * Validate planned time format and range
+   * @returns {boolean} - Validation result
+   * @private
+   */
+  _validatePlannedTime() {
     if (this.plannedTime !== null) {
       if (!(this.plannedTime instanceof Date)) {
         logger.error(`Task validation failed: plannedTime must be Date object or null, got ${typeof this.plannedTime}`);
@@ -164,9 +282,20 @@ class Task {
         logger.error(`Task validation failed: plannedTime is invalid Date object`);
         return false;
       }
+      if (this.plannedTime < this.createdAt) {
+        logger.error(`Task validation failed: plannedTime "${this.plannedTime.toISOString()}" must be >= createdAt "${this.createdAt.toISOString()}"`);
+        return false;
+      }
     }
+    return true;
+  }
 
-    // NEW: duration validation (must be > 0 if present)
+  /**
+   * Validate duration
+   * @returns {boolean} - Validation result
+   * @private
+   */
+  _validateDuration() {
     if (this.duration !== null && this.duration !== undefined) {
       if (typeof this.duration !== 'number') {
         logger.error(`Task validation failed: duration must be number or null, got ${typeof this.duration}`);
@@ -177,8 +306,15 @@ class Task {
         return false;
       }
     }
+    return true;
+  }
 
-    // NEW: labels validation (array of strings or empty array)
+  /**
+   * Validate labels array
+   * @returns {boolean} - Validation result
+   * @private
+   */
+  _validateLabels() {
     if (this.labels !== null && this.labels !== undefined) {
       if (!Array.isArray(this.labels)) {
         logger.error(`Task validation failed: labels must be array, got ${typeof this.labels}`);
@@ -191,8 +327,15 @@ class Task {
         }
       }
     }
+    return true;
+  }
 
-    // NEW: dependencies validation (array of task IDs or empty array)
+  /**
+   * Validate dependencies array
+   * @returns {boolean} - Validation result
+   * @private
+   */
+  _validateDependencies() {
     if (this.dependencies !== null && this.dependencies !== undefined) {
       if (!Array.isArray(this.dependencies)) {
         logger.error(`Task validation failed: dependencies must be array, got ${typeof this.dependencies}`);
@@ -205,24 +348,6 @@ class Task {
         }
       }
     }
-
-    // NEW: dueDate range validation (must be >= createdAt as local calendar dates)
-    if (this.dueDate !== null) {
-      const createdAtDateOnly = coerceDateOnly(this.createdAt);
-      if (createdAtDateOnly && this.dueDate < createdAtDateOnly) {
-        logger.error(`Task validation failed: dueDate "${this.dueDate}" must be >= createdAt "${createdAtDateOnly}"`);
-        return false;
-      }
-    }
-
-    // NEW: plannedTime range validation (must be >= createdAt as timestamps)
-    if (this.plannedTime !== null) {
-      if (this.plannedTime < this.createdAt) {
-        logger.error(`Task validation failed: plannedTime "${this.plannedTime.toISOString()}" must be >= createdAt "${this.createdAt.toISOString()}"`);
-        return false;
-      }
-    }
-
     return true;
   }
 
@@ -267,20 +392,44 @@ class Task {
    * @param {Object} data - Updated data
    */
   update(data) {
+    this._updateBasicProperties(data);
+    this._updateDateProperties(data);
+    this._updateMetadataProperties(data);
+    this.updatedAt = new Date();
+  }
+
+  /**
+   * Update basic string properties
+   * @param {Object} data - Updated data
+   * @private
+   */
+  _updateBasicProperties(data) {
     if (data.name !== undefined) this.name = data.name;
     if (data.description !== undefined) this.description = data.description;
-    if (data.duration !== undefined) this.duration = data.duration;
-
-    // Handle dueDate updates consistently
-    this._setDueDateForUpdate(data.dueDate);
-
-    if (data.plannedTime !== undefined) this.plannedTime = data.plannedTime;
     if (data.projectId !== undefined) this.projectId = data.projectId;
+  }
+
+  /**
+   * Update date and time properties
+   * @param {Object} data - Updated data
+   * @private
+   */
+  _updateDateProperties(data) {
+    if (data.duration !== undefined) this.duration = data.duration;
+    if (data.dueDate !== undefined) this._setDueDateForUpdate(data.dueDate);
+    if (data.plannedTime !== undefined) this.plannedTime = data.plannedTime;
+  }
+
+  /**
+   * Update metadata properties
+   * @param {Object} data - Updated data
+   * @private
+   */
+  _updateMetadataProperties(data) {
     if (data.dependencies !== undefined) this.dependencies = data.dependencies;
     if (data.status !== undefined) this.status = data.status;
     if (data.labels !== undefined) this.labels = data.labels;
     if (data.priority !== undefined) this.priority = data.priority;
-    this.updatedAt = new Date();
   }
 
   /**
@@ -289,11 +438,7 @@ class Task {
    * @private
    */
   _setDueDateForUpdate(dateValue) {
-    if (dateValue === null) {
-      this.dueDate = null;
-    } else if (dateValue !== undefined) {
-      this.dueDate = coerceDateOnly(dateValue);
-    }
+    this.dueDate = dateValue === null ? null : coerceDateOnly(dateValue);
   }
 }
 
