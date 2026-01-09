@@ -274,9 +274,10 @@
 <script>
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useStore } from 'vuex';
-import logger from '../../services/logger.js';
+import { Task } from '../../../shared/models/Task.js';
 import RecurrenceIndicator from '../recurrence/RecurrenceIndicator.vue';
-import { endOfDayLocalFromDateOnly, parseDateOnlyLocal } from '../../../shared/utils/dateTime.js';
+import { useTaskValidation } from './composables/useTaskValidation.js';
+import { useTaskFormatting } from './composables/useTaskFormatting.js';
 
 export default {
   name: 'TaskItem',
@@ -303,6 +304,10 @@ export default {
     const showDropdown = ref(false);
     const showMoveOptions = ref(false);
 
+    // Use business logic composables
+    const { isTaskOverdue } = useTaskValidation();
+    const { formatTaskDate, formatTaskDateTime, formatTaskDuration, capitalizeFirst } = useTaskFormatting();
+
     // Get projects from store
     const projects = computed(() => store.getters['projects/allProjects']);
     const isLoadingProjects = computed(() => store.getters['projects/isLoading']);
@@ -312,39 +317,19 @@ export default {
       return projects.value.filter((project) => project.id !== props.task.projectId);
     });
 
-    // Check if planned time is after due date
+    // Check if planned time is after due date (computed for template)
     const isPlannedTimeAfterDueDate = computed(() => {
-      // Only validate if both due date and planned time are set
       if (!props.task.dueDate || !props.task.plannedTime) {
         return false;
       }
-
-      const dueEnd = endOfDayLocalFromDateOnly(props.task.dueDate);
-      if (!dueEnd) {
-        return false;
-      }
-
-      // Planned time is already a date string
-      const plannedDateTime = new Date(props.task.plannedTime);
-
-      // Compare dates
-      return plannedDateTime > dueEnd;
+      // Check if planned time exceeds due date
+      const plannedDate = props.task.plannedTime instanceof Date ? props.task.plannedTime : new Date(props.task.plannedTime);
+      const dueEndDate = new Date(props.task.dueDate + 'T23:59:59');
+      return plannedDate > dueEndDate;
     });
 
-    // Check if task is overdue (past due date and not done)
-    const isOverdue = computed(() => {
-      if (!props.task.dueDate || props.task.status === 'done') {
-        return false;
-      }
-
-      const dueEnd = endOfDayLocalFromDateOnly(props.task.dueDate);
-      if (!dueEnd) {
-        return false;
-      }
-      const now = new Date();
-
-      return now > dueEnd;
-    });
+    // Check if task is overdue using composable
+    const isOverdue = computed(() => isTaskOverdue(props.task));
 
     // Close dropdowns when clicking outside
     const closeDropdowns = (event) => {
@@ -407,74 +392,10 @@ export default {
     });
 
     const toggleStatus = () => {
-      let newStatus;
-      switch (props.task.status) {
-        case 'planning':
-          newStatus = 'doing';
-          break;
-        case 'doing':
-          newStatus = 'done';
-          break;
-        case 'done':
-          newStatus = 'planning';
-          break;
-        default:
-          newStatus = 'planning';
-      }
+      // Create a temporary Task instance to use the cycleStatus method
+      const taskInstance = new Task(props.task);
+      const newStatus = taskInstance.cycleStatus();
       emit('status-change', props.task.id, newStatus);
-    };
-
-    const formatDate = (dateString) => {
-      const parsed = parseDateOnlyLocal(dateString);
-      if (parsed) {
-        return parsed.toLocaleDateString();
-      }
-      const fallback = new Date(dateString);
-      return isNaN(fallback.getTime()) ? 'Invalid date' : fallback.toLocaleDateString();
-    };
-
-    const formatDateTime = (dateTimeString) => {
-      // Ensure we're working with a valid date
-      const date = new Date(dateTimeString);
-      if (isNaN(date)) {
-        logger.error(`Invalid date string: ${dateTimeString}`);
-        return 'Invalid date';
-      }
-
-      const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      // Format time in user's local time zone
-      const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
-      const timeStr = date.toLocaleTimeString(undefined, timeOptions);
-
-      // Check if it's today
-      if (date.toDateString() === today.toDateString()) {
-        return `Today, ${timeStr}`;
-      }
-
-      // Check if it's tomorrow
-      if (date.toDateString() === tomorrow.toDateString()) {
-        return `Tomorrow, ${timeStr}`;
-      }
-
-      // Otherwise, show date and time
-      const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-      return `${date.toLocaleDateString(undefined, dateOptions)}, ${timeStr}`;
-    };
-
-    const formatDuration = (minutes) => {
-      if (minutes < 60) {
-        return `${minutes}m`;
-      }
-      const hours = Math.floor(minutes / 60);
-      const remainingMinutes = minutes % 60;
-      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
-    };
-
-    const capitalizeFirst = (str) => {
-      return str.charAt(0).toUpperCase() + str.slice(1);
     };
 
     return {
@@ -489,9 +410,9 @@ export default {
       isOverdue,
       toggleStatus,
       moveTaskToProject,
-      formatDate,
-      formatDateTime,
-      formatDuration,
+      formatDate: formatTaskDate,
+      formatDateTime: formatTaskDateTime,
+      formatDuration: formatTaskDuration,
       capitalizeFirst,
     };
   },

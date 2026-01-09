@@ -110,6 +110,7 @@
 
 <script>
 import { computed } from 'vue';
+import { useTaskFormatting } from '../tasks/composables/useTaskFormatting.js';
 
 export default {
   name: 'PlanDayResult',
@@ -132,6 +133,9 @@ export default {
   },
   emits: ['close'],
   setup(props) {
+    // Use formatting composable
+    const { formatTime, formatHour, formatEndTime, formatTaskDuration } = useTaskFormatting();
+
     // Parse working hours
     const workingHoursStart = computed(() => {
       const [hours, minutes] = props.workingHours.startTime.split(':').map(Number);
@@ -231,37 +235,6 @@ export default {
       }
     };
 
-    // Format time (HH:MM)
-    const formatTime = (dateStr) => {
-      const date = new Date(dateStr);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
-    // Format hour only (HH:MM)
-    const formatHour = (date) => {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
-    // Format end time based on start time and duration
-    const formatEndTime = (startTimeStr, duration) => {
-      const startTime = new Date(startTimeStr);
-      const endTime = new Date(startTime);
-      endTime.setMinutes(endTime.getMinutes() + (duration !== null ? duration : 30));
-      return endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
-    // Format duration (e.g., "30 min")
-    const formatDuration = (duration) => {
-      const mins = duration !== null ? duration : 30;
-      if (mins < 60) {
-        return `${mins} min`;
-      } else {
-        const hours = Math.floor(mins / 60);
-        const remainingMins = mins % 60;
-        return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`;
-      }
-    };
-
     return {
       workingHoursStart,
       workingHoursEnd,
@@ -273,7 +246,7 @@ export default {
       formatTime,
       formatHour,
       formatEndTime,
-      formatDuration,
+      formatDuration: formatTaskDuration,
     };
   },
 };

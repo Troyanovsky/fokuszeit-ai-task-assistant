@@ -95,6 +95,8 @@ import TaskForm from './TaskForm.vue';
 import logger from '../../services/logger';
 import TaskFilter from './TaskFilter.vue';
 import { useTaskSorting } from '../smart/useTaskSorting.js';
+import { useTaskFilters } from './composables/useTaskFilters.js';
+import { useTaskValidation } from './composables/useTaskValidation.js';
 
 export default {
   name: 'ProjectTaskList',
@@ -112,6 +114,8 @@ export default {
   setup(props) {
     const store = useStore();
     const { compareTasks } = useTaskSorting();
+    const { applyTaskFilters } = useTaskFilters();
+    const { isMissedPlannedTime } = useTaskValidation();
     const showAddTaskForm = ref(false);
     const editingTask = ref(null);
     const showingAllTasks = ref(false);
@@ -136,32 +140,8 @@ export default {
     const isLoading = computed(() => store.getters['tasks/isLoading']);
     const error = computed(() => store.getters['tasks/error']);
 
-    // Apply filters to tasks
-    const filteredTasks = computed(() => {
-      let result = [...tasks.value];
-
-      // Filter by status
-      if (filters.value.status !== 'all') {
-        result = result.filter((task) => task.status === filters.value.status);
-      }
-
-      // Filter by priority
-      if (filters.value.priority !== 'all') {
-        result = result.filter((task) => task.priority === filters.value.priority);
-      }
-
-      // Filter by search term
-      if (filters.value.search) {
-        const searchTerm = filters.value.search.toLowerCase();
-        result = result.filter(
-          (task) =>
-            task.name.toLowerCase().includes(searchTerm) ||
-            (task.description && task.description.toLowerCase().includes(searchTerm))
-        );
-      }
-
-      return result;
-    });
+    // Apply filters to tasks using composable
+    const filteredTasks = computed(() => applyTaskFilters(tasks.value, filters.value));
 
     // Tasks to display with sorting
     const displayedTasks = computed(() => {
@@ -170,18 +150,6 @@ export default {
       // Sort tasks: Planning/Doing first, then Done
       return tasksToDisplay.sort(compareTasks);
     });
-
-    // Function to check if planned time is in the past but task is not started or completed
-    const isMissedPlannedTime = (task) => {
-      if (!task.plannedTime || task.status === 'doing' || task.status === 'done') {
-        return false;
-      }
-
-      const plannedDateTime = new Date(task.plannedTime);
-      const now = new Date();
-
-      return now > plannedDateTime;
-    };
 
     // Function to check if a task is currently being edited
     const isTaskBeingEdited = (task) => {

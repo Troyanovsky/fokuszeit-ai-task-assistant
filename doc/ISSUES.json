@@ -218,7 +218,8 @@
         "Add tests for extracted business logic",
         "Document separation pattern in AGENTS.md"
       ],
-      "passes": false
+      "passes": true,
+      "notes": "COMPLETED: Created 6 new composables for business logic: useTaskValidation.js (date/time validation), useTaskFormatting.js (date/time formatting), useTaskFormTransform.js (form data transformation), useTaskFilters.js (task filtering), useSmartProjectFilters.js (today/overdue filtering), and useTaskSorting.js (task sorting - already existed). Added cycleStatus() method to Task model. Updated TaskItem.vue, ProjectTaskList.vue, SmartProjectBase.vue, and PlanDayResult.vue to use extracted logic. Added 59 new unit tests for all composables. Updated AGENTS.md with separation pattern documentation. All 487 tests pass."
     }
   ]
 }

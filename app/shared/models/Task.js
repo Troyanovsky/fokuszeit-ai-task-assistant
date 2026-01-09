@@ -388,6 +388,23 @@ class Task {
   }
 
   /**
+   * Get the next status in the cycle (planning -> doing -> done -> planning)
+   * @returns {string} Next status
+   */
+  cycleStatus() {
+    switch (this.status) {
+      case STATUS.PLANNING:
+        return STATUS.DOING;
+      case STATUS.DOING:
+        return STATUS.DONE;
+      case STATUS.DONE:
+        return STATUS.PLANNING;
+      default:
+        return STATUS.PLANNING;
+    }
+  }
+
+  /**
    * Update task properties
    * @param {Object} data - Updated data
    */

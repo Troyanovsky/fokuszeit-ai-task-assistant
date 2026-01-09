@@ -110,6 +110,8 @@ Essential patterns and architecture details have been extracted to separate docs
 
 ### Renderer
 - `/app/src/components/smart/useLocalTodayDate.js` - Reactive local date composable
+- `/app/src/components/tasks/composables/` - Task-related business logic composables
+- `/app/src/components/smart/composables/` - Smart project business logic composables
 - `/app/preload.cjs` - IPC security bridge
 
 ## Critical Patterns
@@ -125,6 +127,31 @@ When adding AI functions, you must: (1) Add schema to `services/functionSchemas.
 
 ### SQL Injection Prevention
 **Critical pattern**: Always use parameterized queries to prevent SQL injection.
+
+### Presentation Logic vs Business Logic
+**Pattern**: Separate presentation logic from business logic for better testability and reusability.
+
+- **Business logic** belongs in:
+  - Models (`app/shared/models/`) - validation, data transformation
+  - Composables (`app/src/components/*/composables/`) - reusable business logic
+  - Utilities (`app/shared/utils/`) - pure functions
+
+- **Presentation logic** belongs in:
+  - Vue components (`app/src/components/`) - UI state, event handlers, template refs
+
+**Key composables for business logic**:
+- `app/src/components/tasks/composables/useTaskValidation.js` - Date/time validation
+- `app/src/components/tasks/composables/useTaskFormatting.js` - Date/time formatting
+- `app/src/components/tasks/composables/useTaskFormTransform.js` - Form data transformation
+- `app/src/components/tasks/composables/useTaskFilters.js` - Task filtering
+- `app/src/components/smart/composables/useSmartProjectFilters.js` - Smart project filters
+- `app/src/components/smart/useTaskSorting.js` - Task sorting comparison functions
+
+**When to extract business logic**:
+- Validation or formatting logic used in multiple components
+- Complex business rules that can be tested independently
+- Data transformation between different representations
+- Filtering or sorting algorithms
 
 ## Logging
 
