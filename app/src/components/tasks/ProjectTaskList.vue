@@ -94,6 +94,7 @@ import TaskItem from './TaskItem.vue';
 import TaskForm from './TaskForm.vue';
 import logger from '../../services/logger';
 import TaskFilter from './TaskFilter.vue';
+import { useTaskSorting } from '../smart/useTaskSorting.js';
 
 export default {
   name: 'ProjectTaskList',
@@ -110,6 +111,7 @@ export default {
   },
   setup(props) {
     const store = useStore();
+    const { compareTasks } = useTaskSorting();
     const showAddTaskForm = ref(false);
     const editingTask = ref(null);
     const showingAllTasks = ref(false);
@@ -166,58 +168,7 @@ export default {
       let tasksToDisplay = [...filteredTasks.value];
 
       // Sort tasks: Planning/Doing first, then Done
-      return tasksToDisplay.sort((a, b) => {
-        // Group tasks: non-done (planning/doing) vs done
-        const aIsDone = a.status === 'done';
-        const bIsDone = b.status === 'done';
-
-        // Non-done tasks come before done tasks
-        if (!aIsDone && bIsDone) return -1;
-        if (aIsDone && !bIsDone) return 1;
-
-        // For non-done tasks (both planning/doing)
-        if (!aIsDone && !bIsDone) {
-          // Tasks with due date/planned time come first
-          const aHasDate = a.dueDate || a.plannedTime;
-          const bHasDate = b.dueDate || b.plannedTime;
-
-          if (aHasDate && !bHasDate) return -1;
-          if (!aHasDate && bHasDate) return 1;
-
-          // Compare by due date (if available)
-          if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
-            return a.dueDate.localeCompare(b.dueDate);
-          }
-
-          // Compare by planned time (if available)
-          if (a.plannedTime && b.plannedTime && a.plannedTime !== b.plannedTime) {
-            return new Date(a.plannedTime) - new Date(b.plannedTime);
-          }
-
-          // For tasks without dates, sort by priority DESC
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
-        }
-
-        // For done tasks
-        if (aIsDone && bIsDone) {
-          // Compare by due date (if available)
-          if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
-            return a.dueDate.localeCompare(b.dueDate);
-          }
-
-          // Compare by planned time (if available)
-          if (a.plannedTime && b.plannedTime && a.plannedTime !== b.plannedTime) {
-            return new Date(a.plannedTime) - new Date(b.plannedTime);
-          }
-
-          // Finally, sort by priority DESC
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
-        }
-
-        return 0;
-      });
+      return tasksToDisplay.sort(compareTasks);
     });
 
     // Function to check if planned time is in the past but task is not started or completed

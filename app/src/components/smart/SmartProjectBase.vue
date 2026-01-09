@@ -34,6 +34,7 @@ import { Task } from '../../../shared/models/Task.js';
 import logger from '../../services/logger';
 import { formatDateOnlyLocal } from '../../../shared/utils/dateTime.js';
 import { useLocalTodayDate } from './useLocalTodayDate.js';
+import { useTaskSorting } from './useTaskSorting.js';
 
 export default {
   name: 'SmartProjectBase',
@@ -72,6 +73,7 @@ export default {
 
     const { todayDateStr, start: startTodayDateRefresh, stop: stopTodayDateRefresh } =
       useLocalTodayDate();
+    const { compareTasks, compareOverdueTasks } = useTaskSorting();
 
     // Smart project tasks based on type
     const todayTasks = computed(() => {
@@ -138,70 +140,10 @@ export default {
 
       if (props.projectType === 'today') {
         // Sort tasks: Planning/Doing first, then Done
-        return tasksToDisplay.sort((a, b) => {
-          // Group tasks: non-done (planning/doing) vs done
-          const aIsDone = a.status === 'done';
-          const bIsDone = b.status === 'done';
-
-          // Non-done tasks come before done tasks
-          if (!aIsDone && bIsDone) return -1;
-          if (aIsDone && !bIsDone) return 1;
-
-          // For non-done tasks (both planning/doing)
-          if (!aIsDone && !bIsDone) {
-            // Tasks with due date/planned time come first
-            const aHasDate = a.dueDate || a.plannedTime;
-            const bHasDate = b.dueDate || b.plannedTime;
-
-            if (aHasDate && !bHasDate) return -1;
-            if (!aHasDate && bHasDate) return 1;
-
-            // Compare by due date (if available)
-            if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
-              return a.dueDate.localeCompare(b.dueDate);
-            }
-
-            // Compare by planned time (if available)
-            if (a.plannedTime && b.plannedTime && a.plannedTime !== b.plannedTime) {
-              return new Date(a.plannedTime) - new Date(b.plannedTime);
-            }
-
-            // For tasks without dates, sort by priority DESC
-            const priorityOrder = { high: 3, medium: 2, low: 1 };
-            return priorityOrder[b.priority] - priorityOrder[a.priority];
-          }
-
-          // For done tasks
-          if (aIsDone && bIsDone) {
-            // Compare by due date (if available)
-            if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
-              return a.dueDate.localeCompare(b.dueDate);
-            }
-
-            // Compare by planned time (if available)
-            if (a.plannedTime && b.plannedTime && a.plannedTime !== b.plannedTime) {
-              return new Date(a.plannedTime) - new Date(b.plannedTime);
-            }
-
-            // Finally, sort by priority DESC
-            const priorityOrder = { high: 3, medium: 2, low: 1 };
-            return priorityOrder[b.priority] - priorityOrder[a.priority];
-          }
-
-          return 0;
-        });
+        return tasksToDisplay.sort(compareTasks);
       } else if (props.projectType === 'overdue') {
         // Sort overdue tasks by due date (oldest first) and priority
-        return tasksToDisplay.sort((a, b) => {
-          // Compare by due date first (oldest overdue tasks first)
-          if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
-            return a.dueDate.localeCompare(b.dueDate);
-          }
-
-          // If same due date or no due date, sort by priority DESC
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
-        });
+        return tasksToDisplay.sort(compareOverdueTasks);
       }
 
       return tasksToDisplay;

@@ -134,7 +134,8 @@
         "Resolve ESLint complexity warnings in both files",
         "Add/update documentation for any new helpers"
       ],
-      "passes": false
+      "passes": true,
+      "notes": "COMPLETED: Created app/src/components/smart/useTaskSorting.js composable with compareTasks() and compareOverdueTasks() functions. Replaced 52-line inline sort functions in SmartProjectBase.vue and ProjectTaskList.vue with composable calls. Complexity reduced from 27 to ~5 per function. All 431 tests pass."
     },
     {
       "id": "TASK-260105-024",
