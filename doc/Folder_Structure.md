@@ -17,6 +17,20 @@ This documentation is the folder structure for the project. It may be used to fi
             └── 📁__tests__
                 └── aiService.test.js
                 └── functionHandlers.test.js
+            └── 📁ai-function-handlers
+                └── 📁queryHandlers
+                    └── taskQueryHandler.js
+                    └── notificationQueryHandler.js
+                └── 📁utils
+                    └── argumentParsers.js
+                    └── dateTimeParsers.js
+                    └── projectResolvers.js
+                    └── responseFormatters.js
+                └── index.js
+                └── notificationHandlers.js
+                └── projectHandlers.js
+                └── recurrenceHandlers.js
+                └── taskHandlers.js
             └── 📁ipc
                 └── aiIpc.js
                 └── notificationIpc.js

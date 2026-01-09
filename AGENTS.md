@@ -53,16 +53,32 @@ Process boundaries: main process modules may import only from `app/electron-main
 1. User sends message via chat interface
 2. `aiService.js` builds context-aware prompt with system role, projects, datetime, chat history, and function schemas
 3. LLM returns structured function calls with arguments
-4. `functionHandlers.js` dispatches to service methods
-5. Results sent back to LLM for natural language response
-6. UI updates triggered via IPC events
+4. `functionHandlers.js` (backward compatibility) → `ai-function-handlers/index.js` dispatcher
+5. Domain-specific handlers in `ai-function-handlers/` execute operations
+6. Results sent back to LLM for natural language response
+7. UI updates triggered via IPC events
 
 **Key files for AI changes:**
 - `/app/electron-main/aiService.js` - AI orchestration and LLM calls
-- `/app/electron-main/functionHandlers.js` - Function call implementations
+- `/app/electron-main/functionHandlers.js` - Backward compatibility entry point (re-exports from ai-function-handlers)
+- `/app/electron-main/ai-function-handlers/index.js` - Main dispatcher with registry pattern
+- `/app/electron-main/ai-function-handlers/` - Domain-specific handler modules:
+  - `utils/` - Shared utilities (dateTimeParsers, projectResolvers, responseFormatters, argumentParsers)
+  - `taskHandlers.js` - Task CRUD operations
+  - `projectHandlers.js` - Project CRUD operations
+  - `notificationHandlers.js` - Notification CRUD operations
+  - `recurrenceHandlers.js` - Recurrence rule operations
+  - `queryHandlers/taskQueryHandler.js` - Complex task filtering
+  - `queryHandlers/notificationQueryHandler.js` - Complex notification filtering
 - `/app/electron-main/ipcHandlers.js` - Consolidated IPC handler orchestration
 - `/app/electron-main/ipc/` - Domain-specific IPC registrar modules
 - `/app/electron-main/services/functionSchemas.js` - OpenAI function definitions
+
+**Pattern for adding new AI function handlers:**
+1. Add function schema to `services/functionSchemas.js`
+2. Create handler in appropriate `ai-function-handlers/*.js` file (or new domain-specific file)
+3. Register handler in `ai-function-handlers/index.js` handlerRegistry
+4. AI service automatically routes calls to the new handler
 
 ### Data Layer Architecture
 
@@ -91,7 +107,16 @@ Process boundaries: main process modules may import only from `app/electron-main
 - `sqliteErrorHandler.js` - SQLite error parsing and structured error responses
 - `loggingConfig.js` - Logging configuration
 - `loggingSanitizers.js` - Log message sanitization for security
-- `logExample.js` - Logging example file
+
+**AI Function Handlers** (`electron-main/ai-function-handlers/`): Domain-specific AI function handlers organized by responsibility:
+- `index.js` - Main dispatcher with registry pattern (replaces 42-case switch)
+- `utils/` - Shared utilities for argument parsing, date/time formatting, project resolution, response building
+- `taskHandlers.js` - Task CRUD and scheduling operations (5 handlers)
+- `projectHandlers.js` - Project CRUD operations (4 handlers)
+- `notificationHandlers.js` - Notification CRUD operations (5 handlers)
+- `recurrenceHandlers.js` - Recurrence rule operations (3 handlers)
+- `queryHandlers/taskQueryHandler.js` - Complex task filtering with 8 modular filter methods
+- `queryHandlers/notificationQueryHandler.js` - Complex notification filtering with 3 modular filter methods
 
 **Shared Logger** (`shared/logger.js`): Process-agnostic logger adapter that routes to appropriate logger (main/renderer).
 
