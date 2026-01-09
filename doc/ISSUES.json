@@ -170,7 +170,8 @@
         "Resolve ESLint complexity warning in deleteProject",
         "Add/update documentation for the new helpers"
       ],
-      "passes": false
+      "passes": true,
+      "notes": "COMPLETED: Extracted deleteProject into 4 private helper methods (_validateAndLogProjectDeletion, _ensureProjectExists, _deleteProjectTasks, _finalizeProjectDeletion). Reduced complexity from 14 to ~5. All 431 tests pass. ESLint complexity warning resolved."
     },
     {
       "id": "TASK-260106-026",

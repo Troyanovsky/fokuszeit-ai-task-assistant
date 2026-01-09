@@ -167,6 +167,114 @@ class ProjectManager {
   }
 
   /**
+   * Validate project deletion and log what will be deleted.
+   * @private
+   * @param {string} id - Project ID
+   * @returns {Promise<Object>} - Validation result with canDelete flag and details
+   */
+  async _validateAndLogProjectDeletion(id) {
+    const validation = await this.validateProjectDeletion(id);
+    if (!validation.canDelete) {
+      logger.warn(`Cannot delete project ${id}: ${validation.reason}`);
+      return validation;
+    }
+
+    // Log what will be deleted
+    if (validation.details && validation.details.taskCounts.total > 0) {
+      logger.info(
+        `Preparing to delete project "${validation.details.projectName}" with ${validation.details.taskCounts.total} tasks:`
+      );
+      logger.info(`- Planning: ${validation.details.taskCounts.planning}`);
+      logger.info(`- Doing: ${validation.details.taskCounts.doing}`);
+      logger.info(`- Done: ${validation.details.taskCounts.done}`);
+    }
+
+    return validation;
+  }
+
+  /**
+   * Ensure a project exists before deletion.
+   * @private
+   * @param {string} id - Project ID
+   * @returns {Promise<Project|null>} - Project instance or null if not found
+   */
+  async _ensureProjectExists(id) {
+    const project = await this.getProjectById(id);
+    if (!project) {
+      const errorInfo = createNotFoundError('Delete project', 'Project', id);
+      logger.error(errorInfo.developerMessage);
+      return null;
+    }
+    return project;
+  }
+
+  /**
+   * Delete all tasks associated with a project.
+   * Handles individual task failures gracefully and continues deletion.
+   * @private
+   * @param {string} projectId - Project ID
+   * @param {Array} projectTasks - Array of Task instances to delete
+   * @param {Object} taskManager - Task manager instance
+   * @returns {Promise<Object>} - Deletion summary with deletedCount and failedTasks
+   */
+  async _deleteProjectTasks(projectId, projectTasks, taskManager) {
+    logger.info(`Found ${projectTasks.length} tasks to delete for project ${projectId}`);
+
+    let deletedCount = 0;
+    let failedTasks = [];
+
+    for (const task of projectTasks) {
+      try {
+        const taskDeleted = await taskManager.deleteTask(task.id);
+        if (taskDeleted) {
+          deletedCount++;
+        } else {
+          failedTasks.push(task.id);
+          logger.warn(`Failed to delete task ${task.id} for project ${projectId}`);
+        }
+      } catch (taskError) {
+        failedTasks.push(task.id);
+        const taskErrorInfo = parseSqliteError(
+          taskError,
+          'Delete task during project deletion',
+          { projectId, taskId: task.id }
+        );
+        logger.logError(taskError, taskErrorInfo.developerMessage);
+        // Continue with other tasks even if one fails
+      }
+    }
+
+    return { deletedCount, failedTasks };
+  }
+
+  /**
+   * Finalize project deletion and log results.
+   * @private
+   * @param {string} projectId - Project ID
+   * @param {Object} summary - Deletion summary
+   * @param {number} summary.deletedCount - Number of tasks deleted
+   * @param {number} summary.totalTasks - Total number of tasks
+   * @param {Array<string>} summary.failedTasks - Array of failed task IDs
+   * @returns {boolean} - Success status
+   */
+  _finalizeProjectDeletion(projectId, { deletedCount, totalTasks, failedTasks }) {
+    const result = databaseService.delete('DELETE FROM projects WHERE id = ?', [projectId]);
+
+    if (result && result.changes > 0) {
+      logger.info(
+        `Successfully deleted project ${projectId} and ${deletedCount}/${totalTasks} associated tasks`
+      );
+      if (failedTasks.length > 0) {
+        logger.warn(`Failed to delete ${failedTasks.length} tasks: ${failedTasks.join(', ')}`);
+      }
+      return true;
+    } else {
+      logger.error(`Failed to delete project ${projectId} from database`);
+      return false;
+    }
+  }
+
+  /**
    * Delete a project and all its associated data
    * @param {string} id - Project ID
    * @param {boolean} force - Force deletion without validation (default: false)
@@ -174,78 +282,31 @@ class ProjectManager {
    */
   async deleteProject(id, force = false) {
     try {
-      // Validate deletion unless forced
+      // Step 1: Validate and log (unless forced)
       if (!force) {
-        const validation = await this.validateProjectDeletion(id);
+        const validation = await this._validateAndLogProjectDeletion(id);
         if (!validation.canDelete) {
-          logger.warn(`Cannot delete project ${id}: ${validation.reason}`);
           return false;
         }
-
-        // Log what will be deleted
-        if (validation.details && validation.details.taskCounts.total > 0) {
-          logger.info(
-            `Preparing to delete project "${validation.details.projectName}" with ${validation.details.taskCounts.total} tasks:`
-          );
-          logger.info(`- Planning: ${validation.details.taskCounts.planning}`);
-          logger.info(`- Doing: ${validation.details.taskCounts.doing}`);
-          logger.info(`- Done: ${validation.details.taskCounts.done}`);
-        }
       }
 
-      // Get project and tasks for deletion
-      const project = await this.getProjectById(id);
+      // Step 2: Ensure project exists
+      const project = await this._ensureProjectExists(id);
       if (!project) {
-        const errorInfo = createNotFoundError('Delete project', 'Project', id);
-        logger.error(errorInfo.developerMessage);
         return false;
       }
 
+      // Step 3: Delete all associated tasks
       const taskManager = (await import('./task.js')).default;
       const projectTasks = await taskManager.getTasksByProject(id);
+      const deletionResult = await this._deleteProjectTasks(id, projectTasks, taskManager);
 
-      logger.info(`Found ${projectTasks.length} tasks to delete for project ${id}`);
-
-      // Delete all tasks and their associated data
-      // This will handle notifications, recurrence rules, and other task-related cleanup
-      let deletedTasksCount = 0;
-      let failedTasks = [];
-      for (const task of projectTasks) {
-        try {
-          const taskDeleted = await taskManager.deleteTask(task.id);
-          if (taskDeleted) {
-            deletedTasksCount++;
-          } else {
-            failedTasks.push(task.id);
-            logger.warn(`Failed to delete task ${task.id} for project ${id}`);
-          }
-        } catch (taskError) {
-          failedTasks.push(task.id);
-          const taskErrorInfo = parseSqliteError(
-            taskError,
-            'Delete task during project deletion',
-            { projectId: id, taskId: task.id }
-          );
-          logger.logError(taskError, taskErrorInfo.developerMessage);
-          // Continue with other tasks even if one fails
-        }
-      }
-
-      // Now delete the project itself
-      const result = databaseService.delete('DELETE FROM projects WHERE id = ?', [id]);
-
-      if (result && result.changes > 0) {
-        logger.info(
-          `Successfully deleted project ${id} and ${deletedTasksCount}/${projectTasks.length} associated tasks`
-        );
-        if (failedTasks.length > 0) {
-          logger.warn(`Failed to delete ${failedTasks.length} tasks: ${failedTasks.join(', ')}`);
-        }
-        return true;
-      } else {
-        logger.error(`Failed to delete project ${id} from database`);
-        return false;
-      }
+      // Step 4: Delete project and log final results
+      return this._finalizeProjectDeletion(id, {
+        deletedCount: deletionResult.deletedCount,
+        totalTasks: projectTasks.length,
+        failedTasks: deletionResult.failedTasks
+      });
     } catch (error) {
       const errorInfo = parseSqliteError(error, 'Delete project', { projectId: id });
       logger.logError(error, errorInfo.developerMessage);
