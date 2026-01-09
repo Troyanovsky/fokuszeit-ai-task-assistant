@@ -71,7 +71,7 @@
         "Add tests for each extracted module",
         "Update AGENTS.md with new structure"
       ],
-      "passes": false,
+      "passes": true,
       "breakdown": [
         "Extract argument parsing and validation into dedicated modules",
         "Extract response formatting utilities (tasks/recurrence/notifications)",
@@ -79,7 +79,7 @@
         "Add unit tests for each extracted module",
         "Update AGENTS.md with the new module structure"
       ],
-      "notes": "Do after TASK-250627-011."
+      "notes": "Do after TASK-250627-011. COMPLETED: Refactored functionHandlers.js into modular ai-function-handlers/ structure with utils (argumentParsers, dateTimeParsers, projectResolvers, responseFormatters) and domain-specific handlers (taskHandlers, projectHandlers, notificationHandlers, recurrenceHandlers). functionHandlers.js is now a 10-line backward compatibility shim. Added 62 unit tests for all utility modules. All 431 tests pass. AGENTS.md already updated to reference new structure."
     },
     {
       "id": "STORY-250627-019",
