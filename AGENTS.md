@@ -74,12 +74,6 @@ Process boundaries: main process modules may import only from `app/electron-main
 - `/app/electron-main/ipc/` - Domain-specific IPC registrar modules
 - `/app/electron-main/services/functionSchemas.js` - OpenAI function definitions
 
-**Pattern for adding new AI function handlers:**
-1. Add function schema to `services/functionSchemas.js`
-2. Create handler in appropriate `ai-function-handlers/*.js` file (or new domain-specific file)
-3. Register handler in `ai-function-handlers/index.js` handlerRegistry
-4. AI service automatically routes calls to the new handler
-
 ### Data Layer Architecture
 
 **Models** (`shared/models/`): Handle data transformation between database (snake_case) and application (camelCase). Every model has `toDatabase()` and `fromDatabase()` methods.
@@ -234,9 +228,53 @@ ipcMain.handle('channel:name', async (_, data) => {
 **Critical**: Never use `ipcMain.emit()` for renderer communication. It bypasses context isolation. Always use `webContents.send()` from the main process to send events to the renderer.
 
 ### AI Function Addition Pattern
-1. Add schema to `functionSchemas.js`
-2. Implement handler in `functionHandlers.js`
-3. AI service routes call to handler automatically
+
+When adding a new AI function handler, follow these steps:
+
+1. **Add function schema** to `services/functionSchemas.js`:
+   - Define the function name, description, and parameters
+   - Follow OpenAI function calling schema format
+
+2. **Create handler implementation** in the appropriate domain file:
+   - Task operations → `ai-function-handlers/taskHandlers.js`
+   - Project operations → `ai-function-handlers/projectHandlers.js`
+   - Notification operations → `ai-function-handlers/notificationHandlers.js`
+   - Recurrence operations → `ai-function-handlers/recurrenceHandlers.js`
+   - Complex queries → `ai-function-handlers/queryHandlers/` (new file if needed)
+   - New domain → Create new handler file in `ai-function-handlers/`
+
+3. **Register handler** in `ai-function-handlers/index.js`:
+   - Import the handler function
+   - Add entry to `handlerRegistry` object:
+     ```javascript
+     yourNewFunction: { handler: yourHandlers.handleYourNewFunction }
+     ```
+
+4. **AI service automatically routes calls** - No changes needed to `aiService.js`
+
+**Example - Adding a new task function:**
+```javascript
+// 1. In services/functionSchemas.js
+{
+  name: 'archiveCompletedTasks',
+  description: 'Archive all completed tasks older than specified date',
+  parameters: { type: 'object', properties: { ... } }
+}
+
+// 2. In ai-function-handlers/taskHandlers.js
+export async function handleArchiveCompletedTasks(args, baseResult) {
+  const result = await taskManager.archiveCompletedTasks(args);
+  return { ...baseResult, success: true, ...result };
+}
+
+// 3. In ai-function-handlers/index.js
+import * as taskHandlers from './taskHandlers.js';
+
+const handlerRegistry = {
+  // ... existing handlers
+  archiveCompletedTasks: { handler: taskHandlers.handleArchiveCompletedTasks }
+};
+```
 
 ### Notification Store Pattern
 
