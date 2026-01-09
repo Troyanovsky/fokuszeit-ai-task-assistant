@@ -32,8 +32,6 @@ npm run format           # Prettier formatting
 
 ## Architecture Overview
 
-### Multi-Process Electron Structure
-
 ```
 Main Process (electron-main/)    Renderer Process (src/)
 ├── AI service orchestration     ├── Vue 3 UI components
@@ -46,118 +44,7 @@ Preload Script (preload.cjs)
 └── Context-isolated IPC bridge (security layer)
 ```
 
-Process boundaries: main process modules may import only from `app/electron-main/*` and `app/shared/*`; renderer modules may import only from `app/src/*` and `app/shared/*`. Shared modules must not depend on process-specific APIs.
-
-### AI Integration Flow
-
-1. User sends message via chat interface
-2. `aiService.js` builds context-aware prompt with system role, projects, datetime, chat history, and function schemas
-3. LLM returns structured function calls with arguments
-4. `functionHandlers.js` (backward compatibility) → `ai-function-handlers/index.js` dispatcher
-5. Domain-specific handlers in `ai-function-handlers/` execute operations
-6. Results sent back to LLM for natural language response
-7. UI updates triggered via IPC events
-
-**Key files for AI changes:**
-- `/app/electron-main/aiService.js` - AI orchestration and LLM calls
-- `/app/electron-main/functionHandlers.js` - Backward compatibility entry point (re-exports from ai-function-handlers)
-- `/app/electron-main/ai-function-handlers/index.js` - Main dispatcher with registry pattern
-- `/app/electron-main/ai-function-handlers/` - Domain-specific handler modules:
-  - `utils/` - Shared utilities (dateTimeParsers, projectResolvers, responseFormatters, argumentParsers)
-  - `taskHandlers.js` - Task CRUD operations
-  - `projectHandlers.js` - Project CRUD operations
-  - `notificationHandlers.js` - Notification CRUD operations
-  - `recurrenceHandlers.js` - Recurrence rule operations
-  - `queryHandlers/taskQueryHandler.js` - Complex task filtering
-  - `queryHandlers/notificationQueryHandler.js` - Complex notification filtering
-- `/app/electron-main/ipcHandlers.js` - Consolidated IPC handler orchestration
-- `/app/electron-main/ipc/` - Domain-specific IPC registrar modules
-- `/app/electron-main/services/functionSchemas.js` - OpenAI function definitions
-
-### Data Layer Architecture
-
-**Models** (`shared/models/`): Handle data transformation between database (snake_case) and application (camelCase). Every model has `toDatabase()` and `fromDatabase()` methods.
-
-- `Project.js` - Project entity
-- `Task.js` - Task entity with dependencies and labels
-- `Notification.js` - Notification entity with type constants
-- `RecurrenceRule.js` - Recurrence rule entity
-
-**Services** (`electron-main/services/`): Singleton business logic classes. Services use models for validation and transformation.
-
-- `project.js` - Project CRUD operations
-- `task.js` - Task CRUD and scheduling operations
-- `notification.js` - Notification CRUD operations
-- `recurrence.js` - Recurrence rule CRUD and task generation
-- `preferences.js` - User preferences management
-- `dataIntegrity.js` - Data integrity checks and cleanup
-- `database.js` - Database connection and query wrapper
-- `functionSchemas.js` - OpenAI function definitions for AI
-
-**Database**: SQLite with `better-sqlite3`. Schema in `app/database/schema.js` with migrations in `app/database/migrations/`.
-
-**Utilities** (`shared/utils/`): Shared helper modules:
-- `dateTime.js` - Date/time utilities for local calendar dates and UTC timestamps
-- `sqliteErrorHandler.js` - SQLite error parsing and structured error responses
-- `loggingConfig.js` - Logging configuration
-- `loggingSanitizers.js` - Log message sanitization for security
-
-**AI Function Handlers** (`electron-main/ai-function-handlers/`): Domain-specific AI function handlers organized by responsibility:
-- `index.js` - Main dispatcher with registry pattern (replaces 42-case switch)
-- `utils/` - Shared utilities for argument parsing, date/time formatting, project resolution, response building
-- `taskHandlers.js` - Task CRUD and scheduling operations (5 handlers)
-- `projectHandlers.js` - Project CRUD operations (4 handlers)
-- `notificationHandlers.js` - Notification CRUD operations (5 handlers)
-- `recurrenceHandlers.js` - Recurrence rule operations (3 handlers)
-- `queryHandlers/taskQueryHandler.js` - Complex task filtering with 8 modular filter methods
-- `queryHandlers/notificationQueryHandler.js` - Complex notification filtering with 3 modular filter methods
-
-**Shared Logger** (`shared/logger.js`): Process-agnostic logger adapter that routes to appropriate logger (main/renderer).
-
-**Data Integrity** (`electron-main/services/dataIntegrity.js`): Service for checking and maintaining data consistency:
-- Finds orphaned tasks, notifications, and recurrence rules
-- Validates recurrence rule data
-- Provides cleanup utilities for expired/orphaned data
-
-**Critical pattern**: Always use parameterized queries to prevent SQL injection.
-
-### IPC Communication Pattern
-
-**Request flow**: Renderer → `window.electron.method()` → preload → `ipcRenderer.invoke()` → `ipcMain.handle()` → Service → Database
-
-**Event flow** (for UI updates): Main process → `mainWindow.webContents.send()` → Renderer IPC listener → Vuex action → Component reactive update
-
-**Security**: Context isolation + whitelisted channels only. Never bypass preload.
-
-### State Management (Vuex)
-
-Modular store structure with actions triggering IPC calls:
-- `store/modules/projects.js` - Project state
-- `store/modules/tasks.js` - Task state and filtering
-- `store/modules/ai.js` - Chat history
-- `store/modules/preferences.js` - User settings
-- `store/modules/recurrence.js` - Recurrence state
-- `store/modules/notifications.js` - Notification state management (centralized hybrid IPC + store pattern)
-
-**Known inefficiency**: Stores refetch entire lists after CRUD operations. Consider optimistic updates or targeted fetches for performance.
-
-### Smart Projects Pattern
-
-Virtual collections based on computed filters (no separate database table):
-- `TodaySmartProject.vue` - Shows tasks due today
-- `OverdueSmartProject.vue` - Shows overdue tasks
-- `SmartProjectBase.vue` - Abstract base with shared logic
-- `useLocalTodayDate.js` - Composable providing reactive local date that auto-refreshes after midnight
-
-**Note**: Smart projects automatically refresh their local "today" date shortly after local midnight via `useLocalTodayDate()`, so Today/Overdue views update even if no task data changes occur.
-
-### NotificationListener Pattern
-
-`NotificationListener.vue` is a non-visible component that handles system notification clicks:
-- Listens for `notification:received` events from main process
-- Properly cleans up listeners on unmount (stores wrapped listener reference)
-- Focuses tasks by selecting their project and navigating to Home route
-- Demonstrates proper IPC event handling pattern
+**Process boundaries**: Main process modules may import only from `app/electron-main/*` and `app/shared/*`; renderer modules may import only from `app/src/*` and `app/shared/*`. Shared modules must not depend on process-specific APIs.
 
 ## Database Schema
 
@@ -170,10 +57,7 @@ notifications (id, task_id, time, type, message, created_at)
 recurrence_rules (id, task_id, frequency, interval, end_date, count, created_at)
 ```
 
-**Date/Time Formats**:
-- Date-only fields (`due_date`, `end_date`): `YYYY-MM-DD` (local calendar dates, no timezone semantics)
-- Timestamp fields (`created_at`, `updated_at`, `time`, `planned_time`): ISO 8601 in UTC
-- See `doc/DATE_TIME_FORMATS.md` for detailed specification and validation strategy
+**Date/Time Formats**: See `doc/DATE_TIME_FORMATS.md` for detailed specification.
 
 - Foreign keys with CASCADE deletes
 - JSON storage for arrays (dependencies, labels)
@@ -193,156 +77,61 @@ recurrence_rules (id, task_id, frequency, interval, end_date, count, created_at)
 
 **ESLint enforces ESM**: All `.js` files must use `import` statements; `require()` is restricted. Test files are covered by linting.
 
-## Important Patterns
+**Documentation convention**: AGENTS.md contains essential high-level knowledge for quick onboarding. Detailed reference docs go in `doc/` for deep-dive topics (patterns, architecture, specifications). Add a new `doc/*.md` when a section in AGENTS.md grows beyond ~30 lines or requires detailed examples.
+
+## Detailed Reference Documentation
+
+Essential patterns and architecture details have been extracted to separate docs, read them for more details info related to your task at hand:
+
+| Document | Description |
+|----------|-------------|
+| [doc/AI_INTEGRATION.md](doc/AI_INTEGRATION.md) | AI service orchestration, function calling, handler registry |
+| [doc/IPC_PATTERNS.md](doc/IPC_PATTERNS.md) | Request/event flow, security patterns, domain-specific registrars |
+| [doc/STATE_MANAGEMENT.md](doc/STATE_MANAGEMENT.md) | Vuex structure, hybrid IPC+store pattern, smart projects |
+| [doc/DEVELOPMENT_PATTERNS.md](doc/DEVELOPMENT_PATTERNS.md) | Model pattern, AI function addition, notification/listener patterns |
+| [doc/DATE_TIME_FORMATS.md](doc/DATE_TIME_FORMATS.md) | Date/time format specification and validation strategy |
+| [doc/Folder_Structure.md](doc/Folder_Structure.md) | Visual tree representation of project structure |
+| [doc/logging.md](doc/logging.md) | Logging system documentation |
+
+## Key Reference Files
+
+### Main Process
+- `/app/electron.js` - Main process entry
+- `/app/electron-main/aiService.js` - AI orchestration
+- `/app/electron-main/functionHandlers.js` - AI function call implementations
+- `/app/electron-main/ipcHandlers.js` - Consolidated IPC handler orchestration
+- `/app/electron-main/ipc/` - Domain-specific IPC registrar modules
+
+### Data Layer
+- `/app/database/schema.js` - Database schema
+- `/app/shared/models/Task.js` - Task model with validation
+- `/app/shared/utils/dateTime.js` - Date/time utilities
+- `/app/electron-main/services/dataIntegrity.js` - Data integrity checks
+
+### Renderer
+- `/app/src/components/smart/useLocalTodayDate.js` - Reactive local date composable
+- `/app/preload.cjs` - IPC security bridge
+
+## Critical Patterns
 
 ### Model Pattern
-Models transform between database and application formats. Always use `fromDatabase()` when reading from DB and `toDatabase()` before writing.
+Models transform between database and application formats. Always use `fromDatabase()` when reading from DB and `toDatabase()` before writing. See [doc/DEVELOPMENT_PATTERNS.md](doc/DEVELOPMENT_PATTERNS.md).
 
-### IPC Handler Pattern
+### AI Function Addition
+When adding AI functions, you must: (1) Add schema to `services/functionSchemas.js`, (2) Create handler in appropriate `ai-function-handlers/` file, (3) Register in `ai-function-handlers/index.js`. See [doc/AI_INTEGRATION.md](doc/AI_INTEGRATION.md).
 
-**Domain-specific registrars** (`electron-main/ipc/`): Each module handles IPC registration for a specific domain:
-- `aiIpc.js` - AI chat and configuration operations
-- `projectIpc.js` - Project CRUD operations
-- `taskCrudIpc.js` - Task CRUD operations
-- `taskSchedulingIpc.js` - Task scheduling, prioritization, and day planning
-- `notificationIpc.js` - Notification CRUD and scheduling operations
-- `recurrenceIpc.js` - Recurrence rule management
-- `preferencesIpc.js` - User preferences management
+### IPC Security
+**Critical**: Never use `ipcMain.emit()` for renderer communication. It bypasses context isolation. Always use `webContents.send()` from the main process. See [doc/IPC_PATTERNS.md](doc/IPC_PATTERNS.md).
 
-All main-process operations follow this pattern:
-```javascript
-ipcMain.handle('channel:name', async (_, data) => {
-  try {
-    const result = await service.method(data);
-    mainWindow.webContents.send('entity:refresh');  // Trigger UI update
-    return result;
-  } catch (error) {
-    logger.logError(error, 'IPC Error - methodName');
-    return false;
-  }
-});
-```
-
-**Orchestration**: `ipcHandlers.js` coordinates registration by delegating to domain-specific registrars via `setupIpcHandlers(mainWindow, aiService)`.
-
-**Critical**: Never use `ipcMain.emit()` for renderer communication. It bypasses context isolation. Always use `webContents.send()` from the main process to send events to the renderer.
-
-### AI Function Addition Pattern
-
-When adding a new AI function handler, follow these steps:
-
-1. **Add function schema** to `services/functionSchemas.js`:
-   - Define the function name, description, and parameters
-   - Follow OpenAI function calling schema format
-
-2. **Create handler implementation** in the appropriate domain file:
-   - Task operations → `ai-function-handlers/taskHandlers.js`
-   - Project operations → `ai-function-handlers/projectHandlers.js`
-   - Notification operations → `ai-function-handlers/notificationHandlers.js`
-   - Recurrence operations → `ai-function-handlers/recurrenceHandlers.js`
-   - Complex queries → `ai-function-handlers/queryHandlers/` (new file if needed)
-   - New domain → Create new handler file in `ai-function-handlers/`
-
-3. **Register handler** in `ai-function-handlers/index.js`:
-   - Import the handler function
-   - Add entry to `handlerRegistry` object:
-     ```javascript
-     yourNewFunction: { handler: yourHandlers.handleYourNewFunction }
-     ```
-
-4. **AI service automatically routes calls** - No changes needed to `aiService.js`
-
-**Example - Adding a new task function:**
-```javascript
-// 1. In services/functionSchemas.js
-{
-  name: 'archiveCompletedTasks',
-  description: 'Archive all completed tasks older than specified date',
-  parameters: { type: 'object', properties: { ... } }
-}
-
-// 2. In ai-function-handlers/taskHandlers.js
-export async function handleArchiveCompletedTasks(args, baseResult) {
-  const result = await taskManager.archiveCompletedTasks(args);
-  return { ...baseResult, success: true, ...result };
-}
-
-// 3. In ai-function-handlers/index.js
-import * as taskHandlers from './taskHandlers.js';
-
-const handlerRegistry = {
-  // ... existing handlers
-  archiveCompletedTasks: { handler: taskHandlers.handleArchiveCompletedTasks }
-};
-```
-
-### Notification Store Pattern
-
-Centralized Vuex store for notification state management replaces direct IPC state management in components. Uses hybrid IPC + store approach:
-
-**Store usage in components:**
-```javascript
-// Batch refresh for all visible tasks
-await store.dispatch('notifications/refreshNotificationCounts');
-
-// Fetch notifications for specific task
-await store.dispatch('notifications/fetchNotificationsByTask', taskId);
-
-// Get notification count (excludes PLANNED_TIME type from UI display)
-const count = store.getters['notifications/notificationCount'](taskId);
-```
-
-**IPC event flow (main → renderer):**
-- Main process emits: `notifications:changed` (with taskId) or `notifications:refresh`
-- Components listen via `window.electron.receive()` then dispatch to store
-- Store manages local state; IPC only triggers updates
-
-**Example:**
-```javascript
-// In component onMounted
-wrappedNotificationsChangedListener.value = window.electron.receive(
-  'notifications:changed',
-  async (taskId) => {
-    if (taskId) {
-      await store.dispatch('notifications/fetchNotificationsByTask', taskId);
-    } else {
-      await store.dispatch('notifications/refreshNotificationCounts');
-    }
-  }
-);
-
-// In component onBeforeUnmount
-window.electron.removeListener('notifications:changed', wrappedNotificationsChangedListener.value);
-```
-
-**Key features:**
-- Excludes PLANNED_TIME type from UI notification counts
-- Clears stale notifications on fetch errors
-- Indexed by taskId for efficient lookups
-- Properly cleans up IPC listeners on component unmount
+### SQL Injection Prevention
+**Critical pattern**: Always use parameterized queries to prevent SQL injection.
 
 ## Logging
 
 Use `electron-log` for all logging (never `console.log`):
 - Main process: `import logger from './electron-main/logger.js'`
-- Main process services: `import logger from '../logger.js'` (direct import, no conditional logic)
-- Shared modules: `import logger from '../logger.js'` (uses shared logger adapter)
+- Shared modules: `import logger from '../logger.js'`
 - Renderer: `import logger from './services/logger.js'`
 - Methods: `logger.info()`, `logger.warn()`, `logger.error()`, `logger.logError(error, context)`
 
-**Important**: ESLint enforces ESM imports - `require()` is not allowed in `.js` files.
-
-## Key Reference Files
-
-- `/app/electron.js` - Main process entry
-- `/app/preload.cjs` - IPC security bridge
-- `/app/electron-main/aiService.js` - AI orchestration
-- `/app/electron-main/functionHandlers.js` - AI function call implementations
-- `/app/electron-main/ipcHandlers.js` - Consolidated IPC handler orchestration
-- `/app/electron-main/ipc/` - Domain-specific IPC registrar modules
-- `/app/database/schema.js` - Database schema
-- `/app/shared/models/Task.js` - Task model with validation
-- `/app/shared/utils/dateTime.js` - Date/time utilities
-- `/app/electron-main/services/dataIntegrity.js` - Data integrity checks
-- `/app/src/components/smart/useLocalTodayDate.js` - Reactive local date composable
-- `/app/doc/DATE_TIME_FORMATS.md` - Date/time format specification
+See [doc/logging.md](doc/logging.md) for details.
