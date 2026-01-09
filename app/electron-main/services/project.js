@@ -208,81 +208,17 @@ class ProjectManager {
     return project;
   }
 
-  /**
-   * Delete all tasks associated with a project.
-   * Handles individual task failures gracefully and continues deletion.
-   * @private
-   * @param {string} projectId - Project ID
-   * @param {Array} projectTasks - Array of Task instances to delete
-   * @param {Object} taskManager - Task manager instance
-   * @returns {Promise<Object>} - Deletion summary with deletedCount and failedTasks
-   */
-  async _deleteProjectTasks(projectId, projectTasks, taskManager) {
-    logger.info(`Found ${projectTasks.length} tasks to delete for project ${projectId}`);
-
-    let deletedCount = 0;
-    let failedTasks = [];
-
-    for (const task of projectTasks) {
-      try {
-        const taskDeleted = await taskManager.deleteTask(task.id);
-        if (taskDeleted) {
-          deletedCount++;
-        } else {
-          failedTasks.push(task.id);
-          logger.warn(`Failed to delete task ${task.id} for project ${projectId}`);
-        }
-      } catch (taskError) {
-        failedTasks.push(task.id);
-        const taskErrorInfo = parseSqliteError(
-          taskError,
-          'Delete task during project deletion',
-          { projectId, taskId: task.id }
-        );
-        logger.logError(taskError, taskErrorInfo.developerMessage);
-        // Continue with other tasks even if one fails
-      }
-    }
-
-    return { deletedCount, failedTasks };
-  }
-
-  /**
-   * Finalize project deletion and log results.
-   * @private
-   * @param {string} projectId - Project ID
-   * @param {Object} summary - Deletion summary
-   * @param {number} summary.deletedCount - Number of tasks deleted
-   * @param {number} summary.totalTasks - Total number of tasks
-   * @param {Array<string>} summary.failedTasks - Array of failed task IDs
-   * @returns {boolean} - Success status
-   */
-  _finalizeProjectDeletion(projectId, { deletedCount, totalTasks, failedTasks }) {
-    const result = databaseService.delete('DELETE FROM projects WHERE id = ?', [projectId]);
-
-    if (result && result.changes > 0) {
-      logger.info(
-        `Successfully deleted project ${projectId} and ${deletedCount}/${totalTasks} associated tasks`
-      );
-      if (failedTasks.length > 0) {
-        logger.warn(`Failed to delete ${failedTasks.length} tasks: ${failedTasks.join(', ')}`);
-      }
-      return true;
-    } else {
-      logger.error(`Failed to delete project ${projectId} from database`);
-      return false;
-    }
-  }
 
   /**
    * Delete a project and all its associated data
+   * CASCADE will automatically delete all tasks, notifications, and recurrence rules
    * @param {string} id - Project ID
    * @param {boolean} force - Force deletion without validation (default: false)
    * @returns {boolean} - Success status
    */
   async deleteProject(id, force = false) {
     try {
-      // Step 1: Validate and log (unless forced)
+      // Validate and log (unless forced)
       if (!force) {
         const validation = await this._validateAndLogProjectDeletion(id);
         if (!validation.canDelete) {
@@ -290,23 +226,22 @@ class ProjectManager {
         }
       }
 
-      // Step 2: Ensure project exists
+      // Ensure project exists
       const project = await this._ensureProjectExists(id);
       if (!project) {
         return false;
       }
 
-      // Step 3: Delete all associated tasks
-      const taskManager = (await import('./task.js')).default;
-      const projectTasks = await taskManager.getTasksByProject(id);
-      const deletionResult = await this._deleteProjectTasks(id, projectTasks, taskManager);
+      // Delete project - CASCADE handles all tasks, notifications, and recurrence rules
+      const result = databaseService.delete('DELETE FROM projects WHERE id = ?', [id]);
 
-      // Step 4: Delete project and log final results
-      return this._finalizeProjectDeletion(id, {
-        deletedCount: deletionResult.deletedCount,
-        totalTasks: projectTasks.length,
-        failedTasks: deletionResult.failedTasks
-      });
+      if (result && result.changes > 0) {
+        logger.info(`Successfully deleted project ${id}`);
+        return true;
+      } else {
+        logger.error(`Failed to delete project ${id} from database`);
+        return false;
+      }
     } catch (error) {
       const errorInfo = parseSqliteError(error, 'Delete project', { projectId: id });
       logger.logError(error, errorInfo.developerMessage);

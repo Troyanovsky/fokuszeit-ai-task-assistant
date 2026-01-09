@@ -427,10 +427,10 @@ class TaskManager {
 
   /**
    * Delete a task and all its associated data
+   * CASCADE will automatically delete all notifications and recurrence rules
    * @param {string} id - Task ID
    * @returns {boolean} - Success status
    */
-  // eslint-disable-next-line complexity
   async deleteTask(id) {
     try {
       // First check if the task exists
@@ -440,47 +440,11 @@ class TaskManager {
         return false;
       }
 
-      // Delete associated notifications
-      try {
-        const notifications = await notificationService.getNotificationsByTask(id);
-        for (const notification of notifications) {
-          await notificationService.deleteNotification(notification.id);
-        }
-        logger.debug(`Deleted ${notifications.length} notifications for task ${id}`);
-      } catch (notificationError) {
-        logger.error(`Error deleting notifications for task ${id}:`, notificationError);
-        // Continue with task deletion even if notification deletion fails
-      }
-
-      // Delete associated recurrence rules
-      try {
-        const recurrenceRules = databaseService.query(
-          'SELECT * FROM recurrence_rules WHERE task_id = ?',
-          [id]
-        );
-
-        for (const rule of recurrenceRules) {
-          const deleteResult = databaseService.delete('DELETE FROM recurrence_rules WHERE id = ?', [
-            rule.id,
-          ]);
-          if (deleteResult && deleteResult.changes > 0) {
-            logger.debug(`Deleted recurrence rule ${rule.id} for task ${id}`);
-          }
-        }
-
-        if (recurrenceRules.length > 0) {
-          logger.debug(`Deleted ${recurrenceRules.length} recurrence rules for task ${id}`);
-        }
-      } catch (recurrenceError) {
-        logger.error(`Error deleting recurrence rules for task ${id}:`, recurrenceError);
-        // Continue with task deletion even if recurrence rule deletion fails
-      }
-
-      // Delete the task
+      // Delete the task - CASCADE handles notifications and recurrence rules
       const result = databaseService.delete('DELETE FROM tasks WHERE id = ?', [id]);
 
       if (result && result.changes > 0) {
-        logger.info(`Successfully deleted task ${id} and all associated data`);
+        logger.info(`Successfully deleted task ${id}`);
         return true;
       } else {
         logger.error(`Failed to delete task ${id} from database`);

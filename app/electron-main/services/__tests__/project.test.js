@@ -3,6 +3,13 @@ import projectManager from '../project.js';
 import databaseService from '../database.js';
 import Project from '../../../shared/models/Project.js';
 
+// Mock the task service
+vi.mock('../task.js', () => ({
+  default: {
+    getTasksByProject: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 // Mock the database service
 vi.mock('../database.js', () => ({
   default: {
@@ -275,20 +282,14 @@ describe('ProjectManager', () => {
   });
 
   describe('deleteProject', () => {
-    it('should delete a project and all associated tasks successfully', async () => {
-      // Mock project exists
+    it('should delete a project successfully - CASCADE handles all associated data', async () => {
+      // Mock project exists (called twice: validation and deletion)
       databaseService.queryOne.mockReturnValue(mockProject);
 
-      // Mock tasks for the project
-      const mockTasks = [
-        { id: 'task-1', name: 'Task 1', status: 'planning' },
-        { id: 'task-2', name: 'Task 2', status: 'doing' },
-      ];
-
-      // Mock the task manager
+      // Mock tasks for validation (empty array is fine)
+      const mockTasks = [];
       const mockTaskManager = {
         getTasksByProject: vi.fn().mockResolvedValue(mockTasks),
-        deleteTask: vi.fn().mockResolvedValue(true),
       };
 
       // Mock dynamic import
@@ -298,11 +299,6 @@ describe('ProjectManager', () => {
       databaseService.delete.mockReturnValue({ changes: 1 });
 
       const result = await projectManager.deleteProject('project-1');
-
-      // Verify tasks were deleted
-      expect(mockTaskManager.getTasksByProject).toHaveBeenCalledWith('project-1');
-      expect(mockTaskManager.deleteTask).toHaveBeenCalledWith('task-1');
-      expect(mockTaskManager.deleteTask).toHaveBeenCalledWith('task-2');
 
       // Verify project was deleted
       expect(databaseService.delete).toHaveBeenCalledWith('DELETE FROM projects WHERE id = ?', [
@@ -315,13 +311,6 @@ describe('ProjectManager', () => {
       // Mock project exists
       databaseService.queryOne.mockReturnValue(mockProject);
 
-      // Mock no tasks
-      const mockTaskManager = {
-        getTasksByProject: vi.fn().mockResolvedValue([]),
-      };
-
-      vi.doMock('../task.js', () => ({ default: mockTaskManager }));
-
       databaseService.delete.mockReturnValue({ changes: 1 });
 
       const result = await projectManager.deleteProject('project-1', true);
@@ -329,31 +318,13 @@ describe('ProjectManager', () => {
       expect(result).toBe(true);
     });
 
-    it('should continue with project deletion even if some tasks fail to delete', async () => {
-      // Mock project exists
-      databaseService.queryOne.mockReturnValue(mockProject);
+    it('should return false if project not found', async () => {
+      // Project not found
+      databaseService.queryOne.mockReturnValue(null);
 
-      const mockTasks = [
-        { id: 'task-1', name: 'Task 1', status: 'planning' },
-        { id: 'task-2', name: 'Task 2', status: 'doing' },
-      ];
+      const result = await projectManager.deleteProject('non-existent');
 
-      const mockTaskManager = {
-        getTasksByProject: vi.fn().mockResolvedValue(mockTasks),
-        deleteTask: vi
-          .fn()
-          .mockResolvedValueOnce(true) // First task succeeds
-          .mockResolvedValueOnce(false), // Second task fails
-      };
-
-      vi.doMock('../task.js', () => ({ default: mockTaskManager }));
-
-      databaseService.delete.mockReturnValue({ changes: 1 });
-
-      const result = await projectManager.deleteProject('project-1');
-
-      expect(mockTaskManager.deleteTask).toHaveBeenCalledTimes(2);
-      expect(result).toBe(true); // Should still succeed
+      expect(result).toBe(false);
     });
 
     it('should return false if there is an error', async () => {
@@ -757,33 +728,6 @@ describe('ProjectManager', () => {
   });
 
   describe('Error Recovery', () => {
-    it('should continue with project deletion even if some tasks fail to delete', async () => {
-      // Mock project exists
-      databaseService.queryOne.mockReturnValue(mockProject);
-
-      const mockTasks = [
-        { id: 'task-1', name: 'Task 1', status: 'planning' },
-        { id: 'task-2', name: 'Task 2', status: 'doing' },
-      ];
-
-      const mockTaskManager = {
-        getTasksByProject: vi.fn().mockResolvedValue(mockTasks),
-        deleteTask: vi
-          .fn()
-          .mockResolvedValueOnce(true) // First task succeeds
-          .mockResolvedValueOnce(false), // Second task fails
-      };
-
-      vi.doMock('../task.js', () => ({ default: mockTaskManager }));
-
-      databaseService.delete.mockReturnValue({ changes: 1 });
-
-      const result = await projectManager.deleteProject('project-1');
-
-      expect(result).toBe(true); // Should still succeed
-      expect(mockTaskManager.deleteTask).toHaveBeenCalledTimes(2);
-    });
-
     it('should validate project deletion returns proper reason for non-existent projects', async () => {
       databaseService.queryOne.mockReturnValue(null);
 
